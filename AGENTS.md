@@ -8,5 +8,7 @@ fields are fuzzy/normalized; API keys live in ENVIRONMENT VARIABLES ONLY — nev
 committed.  3. Working cadence: when I say PLAN, propose an approach and list files/risks but 
 write NO code. When I say REVIEW, critique that plan against the requirements and edge cases and 
 finalize it. When I say EXECUTE, implement exactly the approved plan with tests, then tell me how 
-to verify it. Keep scope to the current phase only.  4. Prefer correctness and clean structure 
-over ambition. Confirm you understand these rules.
+to verify it. Keep scope to the current phase only.  4. Make sure to update/create plans for each
+phase located in docs/plan. Check if architecture.md and IMPLEMENTATION.md file needs updating 
+during each phase EXECUTE command   5. Prefer correctness and clean structure over ambition. 
+Confirm you understand these rules.
