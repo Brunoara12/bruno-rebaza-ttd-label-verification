@@ -1,4 +1,4 @@
-.env
+﻿.env
 .env.*
 !.env.example
 
@@ -17,4 +17,7 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local-only developer notes
+LOCAL_DEV_NOTES.md
 
