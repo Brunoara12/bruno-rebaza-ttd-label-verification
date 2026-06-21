@@ -1,14 +1,17 @@
 ﻿# TTB Label Verification
 
-TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 establishes the deployable foundation: a FastAPI backend health endpoint and a Vite React frontend that verifies connectivity to that backend.
+TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, and Phase 1 adds the typed data models plus a pure, unit-testable comparison engine.
 
 ## Status
 
-Phase 0 is complete.
+Phase 0 and Phase 1 are complete.
 
 - Backend health endpoint is implemented at `GET /health`.
 - Frontend is deployed and displays backend connectivity status.
 - Backend and frontend are deployed separately to match the planned proof-of-concept architecture.
+- Pydantic models define the application data, extracted label, field result, and verification result contracts.
+- The comparison engine is pure Python with no AI calls yet: fuzzy brand/class/producer matching, country synonyms, ABV normalization, net-content unit normalization, and exact case-sensitive government-warning comparison.
+- Phase 2 will add the vision adapter and local/mock extraction path.
 
 ## Deployed URLs
 
@@ -18,11 +21,11 @@ Phase 0 is complete.
 
 ## Tech Stack
 
-- Backend: Python 3.12, FastAPI, Uvicorn
+- Backend: Python 3.12, FastAPI, Uvicorn, Pydantic, RapidFuzz
 - Frontend: React, Vite
 - Package management: uv for Python, npm for frontend assets
 - Deployment: Render for backend, Vercel for frontend
-- Data storage: none for Phase 0
+- Data storage: none; the proof-of-concept remains stateless / in-memory
 
 ## Local Development
 
