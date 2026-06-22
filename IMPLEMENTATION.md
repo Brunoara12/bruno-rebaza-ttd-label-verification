@@ -31,7 +31,11 @@ This file captures the phased execution plan that implements the architecture. F
 - Acceptance note: MVP is not complete until batch upload works end-to-end with 3+ labels, correct passed / needs-review / total counts, and individually viewable results.
 
 6. Robustness & performance
-- Add retries, model fallback, deeper monitoring, accessibility improvements.
+- Tune image preprocessing and prompt/output budget only after measuring. Default target: `VISION_MAX_IMAGE_EDGE_PX=1280`, `VISION_JPEG_QUALITY=76`, `VISION_TIMEOUT_SECONDS=4`.
+- Keep the single-label endpoint under 5 seconds by returning normal `NEEDS_REVIEW` timeout results before the SLA wall.
+- Harden validation and poor-image behavior so user-fixable issues return readable errors and imperfect but readable images return field-level review results.
+- Run an accessibility pass on validation, focus, contrast, tap targets, motion, and small-screen layout.
+- Acceptance note: Phase 6 is not complete until the deployed checklist runner demonstrates valid label, mismatches, case-only, ABV/units normalization, missing/wrong-caps/correct warning, imperfect image, wrong file type, empty submit, batch summary, and single-label speed under 5 seconds.
 
 7. Deploy verify end-to-end + README
 - Deploy frontend and backend; run end-to-end verification against production model endpoint.

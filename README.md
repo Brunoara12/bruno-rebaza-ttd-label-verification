@@ -12,10 +12,10 @@ TTB Label Verification is a proof-of-concept application for checking beverage a
 | Phase 3 | Done | `POST /verify` single-label API. |
 | Phase 4 | Done | Single-label frontend flow with verdict and per-field results. |
 | Phase 5 | Done | Batch endpoint and frontend batch view. |
-| Phase 6 | Upcoming | Robustness and performance. |
+| Phase 6 | Done | Robustness, performance, validation, and accessibility hardening. |
 | Phase 7 | Upcoming | End-to-end deploy verification and README polish. |
 
-Current focus: batch support is implemented locally; the next planned step is robustness, performance, and deployed end-to-end verification.
+Current focus: robustness and performance hardening is implemented locally; the next planned step is deployed end-to-end verification and README polish.
 
 ## Deployed URLs
 
@@ -97,6 +97,12 @@ uv run python scripts/extract_label_sample.py labels/Clover-Hill-wine-back-label
 
 This sample script requires `OPENAI_API_KEY` to be set.
 
+Run the Phase 6 deployed checklist and latency benchmark:
+
+```bash
+uv run python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification.onrender.com --repeats 3
+```
+
 Build the frontend from `frontend`:
 
 ```bash
@@ -113,8 +119,8 @@ CORS_ALLOWED_ORIGINS=https://ttd-label-verification.vercel.app
 VISION_PROVIDER=openai
 VISION_MODEL=gpt-5.4-mini
 VISION_TIMEOUT_SECONDS=4
-VISION_MAX_IMAGE_EDGE_PX=1600
-VISION_JPEG_QUALITY=82
+VISION_MAX_IMAGE_EDGE_PX=1280
+VISION_JPEG_QUALITY=76
 MAX_UPLOAD_BYTES=10485760
 BATCH_MAX_ITEMS=10
 BATCH_WORKER_CONCURRENCY=3

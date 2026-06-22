@@ -14,7 +14,13 @@ export function VerificationForm({
   onSubmit,
 }) {
   return (
-    <form id="verification-form" className="verification-form" onSubmit={onSubmit} noValidate>
+    <form
+      id="verification-form"
+      className="verification-form"
+      onSubmit={onSubmit}
+      noValidate
+      aria-busy={isSubmitting}
+    >
       <ImagePicker
         imageFile={imageFile}
         imagePreviewUrl={imagePreviewUrl}

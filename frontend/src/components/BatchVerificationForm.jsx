@@ -13,7 +13,13 @@ export function BatchVerificationForm({
   onSubmit,
 }) {
   return (
-    <form id="batch-verification-form" className="verification-form" onSubmit={onSubmit} noValidate>
+    <form
+      id="batch-verification-form"
+      className="verification-form"
+      onSubmit={onSubmit}
+      noValidate
+      aria-busy={isSubmitting}
+    >
       <section className="form-section batch-intro" aria-labelledby="batch-heading">
         <h2 id="batch-heading">Batch Labels</h2>
         <p>{items.length} label{items.length === 1 ? "" : "s"} ready to check.</p>
@@ -94,6 +100,7 @@ function BatchItemFields({
             accept="image/jpeg,image/png,image/webp"
             onChange={(event) => onImageChange(item.clientId, event)}
             disabled={isSubmitting}
+            aria-invalid={Boolean(errors.image)}
             aria-describedby={errors.image ? imageErrorId : undefined}
           />
         </label>

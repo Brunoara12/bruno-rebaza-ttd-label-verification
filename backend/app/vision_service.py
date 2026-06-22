@@ -13,33 +13,20 @@ from backend.app.schemas import ExtractedLabel, StrictModel
 
 DEFAULT_VISION_MODEL = "gpt-5.4-mini"
 DEFAULT_VISION_TIMEOUT_SECONDS = 4.0
-DEFAULT_MAX_OUTPUT_TOKENS = 1200
+DEFAULT_MAX_OUTPUT_TOKENS = 900
 
 EXTRACTION_PROMPT = """
-Extract beverage alcohol label text from the image into the requested fields.
-
-Return exactly these fields:
-- brand_name
-- class_type
-- abv
-- net_contents
-- producer
-- country_of_origin
-- government_warning
-- raw_text
-- extraction_confidence
+Extract visible beverage alcohol label text into the requested schema fields.
 
 Use null for any field that is unknown, unreadable, hidden, not present, or too uncertain.
-Do not guess from product knowledge or complete missing text from memory.
-For blurry, angled, glare-heavy, cropped, or partially readable images, return the fields
-you can read and leave the rest null.
+Do not guess from product knowledge or complete missing text from memory. For blurry,
+angled, glare-heavy, cropped, or partially readable images, return only readable fields.
 
-The government_warning field is legally critical. Copy only warning-like text that is
-visible in the image. Preserve case, punctuation, spelling, wording, parentheses, and
-OCR-looking mistakes exactly as visible. Do not correct, normalize, title-case, complete
-from memory, or substitute the canonical government warning. If the warning is partially
-readable, return the readable visible text verbatim with low confidence. If no warning-like
-text is readable, return null.
+The government_warning field is legally critical. Copy only visible warning-like text.
+Preserve case, punctuation, spelling, wording, parentheses, and OCR-looking mistakes
+exactly as visible. Do not correct, normalize, title-case, complete from memory, or
+substitute the canonical government warning. If partially readable, return the readable
+visible text verbatim with low confidence. If no warning-like text is readable, return null.
 
 If the image is not a beverage alcohol label, return null for all seven label fields,
 raw_text as any visible text if present, and extraction_confidence as 0.0.

@@ -124,7 +124,7 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 - **Vision Service**: the OpenAI adapter requests strict structured JSON matching `ExtractedLabel`, then validates it with Pydantic. Blurry/angled/glare images and valid non-label images should return partial or null extracted fields rather than throw. Model timeout must still keep the single-label request under the 5-second SLA. Return `200` with a normal `VerificationResult`: affected fields `FAIL`, `overall_verdict: NEEDS_REVIEW`, `reason_code: MODEL_TIMEOUT`, nullable extracted fields, and `extraction_confidence: 0.0`. Do not use `504` for expected model timeouts in the verification flow.
 - **Comparison Engine**: missing `ExtractedLabel` fields are treated per-strategy: numeric/unit fields try to parse; fuzzy fields with null produce `FAIL` (and thus `NEEDS_REVIEW`). Record reason codes for each `FAIL`.
 - **Batch processing**: per-item failures must not abort whole batch; return one `BatchItemResult` per submitted item. Completed items include item-level `VerificationResult`; invalid/corrupt/provider-failed items include a readable item-level error. Summary counts use `passed = APPROVED items`, `needs_review = total - passed`, so item-level errors count as needs review.
-- **Timeout & SLA**: measure end-to-end latency (`latency_ms`) from endpoint entry through validation, preprocessing, extraction, comparison, and response shaping. Return it in the body and `X-Verification-Latency-ms`; if latency reaches the 5-second SLA, return the response and log a warning with `sla_exceeded`.
+- **Timeout & SLA**: measure end-to-end latency (`latency_ms`) from endpoint entry through validation, preprocessing, extraction, comparison, and response shaping. Return it in the body and `X-Verification-Latency-ms`; guard the model call so expected timeouts return a normal `NEEDS_REVIEW` result before the 5-second SLA wall. If latency reaches the 5-second SLA, return the response and log a warning with `sla_exceeded`.
 
 | Component | Failure Mode | API Response | Recoverable? |
 |---|---|---|---|
@@ -135,7 +135,7 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 ## Deployment & Configuration
 
 - **Secrets**: All API keys, model endpoints, and credentials MUST be environment variables. Never commit keys.
-- **Config vars**: fuzzy thresholds, model timeout, max image size, worker concurrency. Prefer a small env-based `CONFIG` or 12-factor env vars.
+- **Config vars**: fuzzy thresholds, model timeout, max image size, worker concurrency. Current tuned defaults are `VISION_TIMEOUT_SECONDS=4`, `VISION_MAX_IMAGE_EDGE_PX=1280`, and `VISION_JPEG_QUALITY=76`. Prefer a small env-based `CONFIG` or 12-factor env vars.
 - **Hosting**: backend: FastAPI (Python 3.12) deployed to Render. Frontend: static hosting on Vercel with CDN delivery.
 - **Scaling**: stateless design supports horizontal scaling; Render and Vercel both support fast deploys and environment-only secrets for their respective layers.
 - **Monitoring**: metrics for latency, extraction_confidence distributions, error rates. Log requests minimally (no PII) and capture `raw_text` only when needed for debugging with retention policy.

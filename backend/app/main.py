@@ -56,6 +56,7 @@ FIELD_MATCH_TYPES = {
     "government_warning": "exact",
 }
 SINGLE_LABEL_SLA_MS = 5000
+SINGLE_LABEL_RESPONSE_BUFFER_SECONDS = 0.2
 
 app = FastAPI(title="TTB Label Verification API")
 
@@ -266,11 +267,14 @@ async def _verify_single_upload(
         ) from exc
 
     try:
-        extracted_label = await asyncio.to_thread(
-            vision_service.extract_label,
-            preprocessed_image,
+        extracted_label = await asyncio.wait_for(
+            asyncio.to_thread(
+                vision_service.extract_label,
+                preprocessed_image,
+            ),
+            timeout=_remaining_model_timeout_seconds(started_at),
         )
-    except VisionTimeoutError:
+    except (VisionTimeoutError, asyncio.TimeoutError):
         return _failed_verification_result(
             application,
             "MODEL_TIMEOUT",
@@ -611,6 +615,13 @@ def _log_batch_result(result: BatchVerificationResult, worker_count: int) -> Non
 
 def _elapsed_ms(started_at: float) -> int:
     return max(0, round((perf_counter() - started_at) * 1000))
+
+
+def _remaining_model_timeout_seconds(started_at: float) -> float:
+    elapsed_seconds = max(0.0, perf_counter() - started_at)
+    remaining_sla_seconds = (SINGLE_LABEL_SLA_MS / 1000) - elapsed_seconds
+    guarded_timeout = remaining_sla_seconds - SINGLE_LABEL_RESPONSE_BUFFER_SECONDS
+    return max(0.05, min(settings.vision_timeout_seconds, guarded_timeout))
 
 
 def _request_validation_fields(exc: RequestValidationError) -> list[dict[str, str]]:

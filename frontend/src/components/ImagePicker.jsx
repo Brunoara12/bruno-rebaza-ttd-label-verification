@@ -22,6 +22,7 @@ export function ImagePicker({
           accept="image/jpeg,image/png,image/webp"
           onChange={onImageChange}
           disabled={isSubmitting}
+          aria-invalid={Boolean(imageError)}
           aria-describedby={imageError ? "image-error" : undefined}
         />
       </label>
