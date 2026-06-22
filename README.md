@@ -1,27 +1,28 @@
-﻿# TTB Label Verification
+# TTB Label Verification
 
-TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, Phase 2 added a mockable vision extraction service, Phase 3 wires the single-label verification API, Phase 4 adds the single-label frontend flow, and Phase 5 adds batch verification.
+TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. A user uploads a label image, enters the expected application data, and receives field-level PASS/FAIL results plus an overall `APPROVED` or `NEEDS_REVIEW` verdict.
 
-## Status
+## Final Submission Links
 
-| Phase | Status | Notes |
-| --- | --- | --- |
-| Phase 0 | Done | Repo scaffold, deploy skeleton, and health endpoint. |
-| Phase 1 | Done | Typed data models and pure comparison engine. |
-| Phase 2 | Done | Mockable vision extraction service and image preprocessing. |
-| Phase 3 | Done | `POST /verify` single-label API. |
-| Phase 4 | Done | Single-label frontend flow with verdict and per-field results. |
-| Phase 5 | Done | Batch endpoint and frontend batch view. |
-| Phase 6 | Done | Robustness, performance, validation, and accessibility hardening. |
-| Phase 7 | Upcoming | End-to-end deploy verification and README polish. |
-
-Current focus: robustness and performance hardening is implemented locally; the next planned step is deployed end-to-end verification and README polish.
-
-## Deployed URLs
-
-- Frontend: https://ttd-label-verification.vercel.app/
-- Backend: https://bruno-rebaza-ttd-label-verification.onrender.com
+- Public repo: https://github.com/AI-Native-2026-06-22-FedStack/bruno-rebaza-ttd-label-verification
+- Live frontend: https://ttd-label-verification.vercel.app/
+- Backend API: https://bruno-rebaza-ttd-label-verification.onrender.com
 - Backend health: https://bruno-rebaza-ttd-label-verification.onrender.com/health
+
+## What It Does
+
+- Verifies a single label image against seven expected fields.
+- Supports batch upload with item-level results and summary counts.
+- Shows per-field expected-vs-found details so a human can resolve `NEEDS_REVIEW` cases.
+- Treats the government warning as an exact, case-sensitive match after whitespace collapse.
+- Uses fuzzy, normalized, numeric, and unit-aware comparison for all other fields.
+- Runs statelessly with no database or persisted user data.
+
+## Approach
+
+The React frontend posts `multipart/form-data` to a FastAPI backend. The backend validates the request, preprocesses the image, calls a mockable vision-model adapter for structured extraction, then compares extracted fields against the submitted application data.
+
+The comparison engine is isolated as pure Python logic so matching rules can be tested without model calls. The vision service is also isolated so local tests can use a mock provider while deployed verification uses the real model through environment-only credentials.
 
 ## Tech Stack
 
@@ -29,9 +30,9 @@ Current focus: robustness and performance hardening is implemented locally; the 
 - Frontend: React, Vite
 - Package management: uv for Python, npm for frontend assets
 - Deployment: Render for backend, Vercel for frontend
-- Data storage: none; the proof-of-concept remains stateless / in-memory
+- Storage: none; the app is stateless / in-memory
 
-## Local Development
+## Local Setup
 
 Run the backend from the repo root:
 
@@ -42,7 +43,20 @@ uv run uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
 Open `http://localhost:8000/health`.
 
-The backend loads the repo-root `.env` file automatically for local development. To use the real vision model locally, set `VISION_PROVIDER=openai` and `OPENAI_API_KEY` there, then restart the backend.
+The backend loads the repo-root `.env` file automatically for local development. Start from `.env.example`; to use the real vision model locally, set `VISION_PROVIDER=openai` and `OPENAI_API_KEY` in your local `.env`, then restart the backend.
+
+Run the frontend from `frontend`:
+
+```bash
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Open `http://localhost:5173`.
+
+Set `VITE_API_BASE_URL=http://localhost:8000` in `frontend/.env` to point the local frontend at your local backend. If the variable is not set, the frontend defaults to the deployed Render backend.
+
+## API Examples
 
 Submit one label verification request:
 
@@ -70,45 +84,6 @@ curl -X POST http://localhost:8000/verify/batch \
 
 The response includes `items`, `summary`, and `latency_ms`. One bad item returns an item-level error or needs-review result without failing the whole batch.
 
-Run the frontend from `frontend`:
-
-```bash
-npm install
-npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
-```
-
-Open `http://localhost:5173`.
-
-Set `VITE_API_BASE_URL=http://localhost:8000` in `frontend/.env` to point the local frontend at your local backend. If the variable is not set, the frontend defaults to the deployed Render backend.
-
-## Tests And Builds
-
-Run backend tests from the repo root:
-
-```bash
-uv run pytest
-```
-
-Run one real vision extraction sample from the repo root:
-
-```bash
-uv run python scripts/extract_label_sample.py labels/Clover-Hill-wine-back-label.png
-```
-
-This sample script requires `OPENAI_API_KEY` to be set.
-
-Run the Phase 6 deployed checklist and latency benchmark:
-
-```bash
-uv run python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification.onrender.com --repeats 3
-```
-
-Build the frontend from `frontend`:
-
-```bash
-npm run build
-```
-
 ## Environment Variables
 
 Backend:
@@ -133,7 +108,7 @@ Frontend:
 VITE_API_BASE_URL=https://bruno-rebaza-ttd-label-verification.onrender.com
 ```
 
-For local development examples, see `.env.example` and `frontend/.env.example`.
+Only variable names belong in `.env.example` files. Real keys must stay in local or host environment variables and must never be committed.
 
 ## Deployment
 
@@ -147,6 +122,52 @@ The frontend is deployed on Vercel from the `frontend` project root.
 - Build command: `npm run build`
 - Output directory: `dist`
 
-## Secrets
+## Tests And Final Verification
 
-Never commit real secrets. Use `.env.example` files for variable names only, and set real values in Render or Vercel environment variables.
+Run backend tests from the repo root:
+
+```bash
+uv run pytest
+```
+
+Build the frontend from `frontend`:
+
+```bash
+npm run build
+```
+
+Run the deployed checklist and latency benchmark:
+
+```bash
+uv run python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification.onrender.com --repeats 3
+```
+
+Before submission, also open the live frontend and complete one single-label verification plus one batch verification with at least three items. Confirm the deployed backend health URL returns `{"status":"ok"}` and that the benchmark reports `all_passed: true` with single-label max latency under 5000 ms.
+
+## Secret Audit
+
+The repository is configured so `.env` and `frontend/.env` are ignored. The tracked env files should only be `.env.example` and `frontend/.env.example`.
+
+Final audit commands:
+
+```bash
+git ls-files .env frontend/.env
+git log --all --oneline -- .env frontend/.env
+git check-ignore -v .env frontend/.env
+git grep -n -I -E "(sk-[A-Za-z0-9_-]{20,}|OPENAI_API_KEY\s*=\s*[^<[:space:]#][^[:space:]#]+|API_KEY\s*=\s*[^<[:space:]#][^[:space:]#]+|SECRET\s*=\s*[^<[:space:]#][^[:space:]#]+|TOKEN\s*=\s*[^<[:space:]#][^[:space:]#]+|PASSWORD\s*=\s*[^<[:space:]#][^[:space:]#]+)"
+git log -p --all -G "(sk-[A-Za-z0-9_-]{20,}|OPENAI_API_KEY\s*=\s*[^<[:space:]#][^[:space:]#]+|API_KEY\s*=\s*[^<[:space:]#][^[:space:]#]+|SECRET\s*=\s*[^<[:space:]#][^[:space:]#]+|TOKEN\s*=\s*[^<[:space:]#][^[:space:]#]+|PASSWORD\s*=\s*[^<[:space:]#][^[:space:]#]+)" -- .
+```
+
+## Assumptions
+
+- `NEEDS_REVIEW` means a human reviewer should inspect the field-level details.
+- Free-tier deployment may have a cold-start delay on the first request.
+- The model is expected to return partial/null fields rather than guess when images are poor or incomplete.
+- The proof-of-concept prioritizes readable review results over automatic rejection on uncertain extraction.
+
+## Limitations
+
+- This is not a production compliance system.
+- There is no login, persistent audit log, database, manual override workflow, or long-term file storage.
+- Vision-model latency and quality depend on the provider, image quality, and network conditions.
+- Secret scans catch common key patterns and tracked `.env` mistakes, but they do not replace full organization-level secret scanning.

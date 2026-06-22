@@ -26,6 +26,111 @@ COUNTRY_SYNONYMS = {
     "united states of america": "united states",
 }
 
+US_STATE_ABBREVIATIONS = {
+    "al",
+    "ak",
+    "az",
+    "ar",
+    "ca",
+    "co",
+    "ct",
+    "dc",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "ia",
+    "id",
+    "il",
+    "ks",
+    "ky",
+    "la",
+    "ma",
+    "md",
+    "mi",
+    "mn",
+    "mo",
+    "ms",
+    "mt",
+    "nc",
+    "nd",
+    "ne",
+    "nh",
+    "nj",
+    "nm",
+    "nv",
+    "ny",
+    "oh",
+    "ok",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "va",
+    "vt",
+    "wa",
+    "wi",
+    "wv",
+    "wy",
+}
+AMBIGUOUS_US_STATE_ABBREVIATIONS = {"in", "me", "or"}
+US_STATE_NAMES = {
+    "alabama",
+    "alaska",
+    "arizona",
+    "arkansas",
+    "california",
+    "colorado",
+    "connecticut",
+    "delaware",
+    "district of columbia",
+    "florida",
+    "georgia",
+    "hawaii",
+    "idaho",
+    "illinois",
+    "indiana",
+    "iowa",
+    "kansas",
+    "kentucky",
+    "louisiana",
+    "maine",
+    "maryland",
+    "massachusetts",
+    "michigan",
+    "minnesota",
+    "mississippi",
+    "missouri",
+    "montana",
+    "nebraska",
+    "nevada",
+    "new hampshire",
+    "new jersey",
+    "new mexico",
+    "new york",
+    "north carolina",
+    "north dakota",
+    "ohio",
+    "oklahoma",
+    "oregon",
+    "pennsylvania",
+    "rhode island",
+    "south carolina",
+    "south dakota",
+    "tennessee",
+    "texas",
+    "utah",
+    "vermont",
+    "virginia",
+    "washington",
+    "west virginia",
+    "wisconsin",
+    "wyoming",
+}
+
 
 def compare_brand_name(expected: str, found: str | None) -> FieldResult:
     return _compare_fuzzy("brand_name", "fuzzy", expected, found, FUZZY_THRESHOLD)
@@ -36,7 +141,14 @@ def compare_class_type(expected: str, found: str | None) -> FieldResult:
 
 
 def compare_producer(expected: str, found: str | None) -> FieldResult:
-    return _compare_fuzzy("producer", "fuzzy", expected, found, FUZZY_THRESHOLD)
+    return _compare_fuzzy(
+        "producer",
+        "fuzzy",
+        expected,
+        found,
+        FUZZY_THRESHOLD,
+        normalizer=_normalize_producer_text,
+    )
 
 
 def compare_country_of_origin(expected: str, found: str | None) -> FieldResult:
@@ -128,12 +240,14 @@ def _compare_fuzzy(
     expected: str,
     found: str | None,
     threshold: float,
+    normalizer=None,
 ) -> FieldResult:
     if _is_missing(found):
         return _fail(field, match_type, expected, found, "MISSING_FIELD")
 
-    expected_normalized = _normalize_fuzzy_text(expected)
-    found_normalized = _normalize_fuzzy_text(found)
+    normalizer = normalizer or _normalize_fuzzy_text
+    expected_normalized = normalizer(expected)
+    found_normalized = normalizer(found)
 
     # Fuzzy scores are too forgiving for very short strings, so short values must match exactly.
     if _requires_exact_short_match(expected_normalized, found_normalized):
@@ -183,6 +297,19 @@ def _normalize_fuzzy_text(value: str | None) -> str:
     return _collapse_whitespace(without_punctuation)
 
 
+def _normalize_producer_text(value: str | None) -> str:
+    normalized = _normalize_fuzzy_text(value)
+    role_words = (
+        "produced|distilled|bottled|imported|vinted|cellared|blended|brewed|"
+        "fermented|prepared|manufactured|made|packed|selected"
+    )
+    return re.sub(
+        rf"^(?:(?:{role_words})(?:\s+and\s+(?:{role_words}))*\s+by\s+)+",
+        "",
+        normalized,
+    )
+
+
 def _collapse_whitespace(value: str | None) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
 
@@ -204,7 +331,24 @@ def _token_sort_ratio(expected: str, found: str) -> float:
 
 def _canonical_country(value: str | None) -> str:
     normalized = _normalize_fuzzy_text(value or "")
-    return COUNTRY_SYNONYMS.get(normalized, normalized)
+    if normalized in COUNTRY_SYNONYMS:
+        return COUNTRY_SYNONYMS[normalized]
+    if _mentions_us_location(value or "", normalized):
+        return "united states"
+    return normalized
+
+
+def _mentions_us_location(raw_value: str, normalized: str) -> bool:
+    state_pattern = "|".join(sorted(US_STATE_ABBREVIATIONS | AMBIGUOUS_US_STATE_ABBREVIATIONS))
+    if re.search(rf",\s*(?:{state_pattern})\.?\b", raw_value, flags=re.IGNORECASE):
+        return True
+
+    normalized_tokens = set(normalized.split())
+    if normalized_tokens & US_STATE_ABBREVIATIONS:
+        return True
+
+    padded_normalized = f" {normalized} "
+    return any(f" {state} " in padded_normalized for state in US_STATE_NAMES)
 
 
 def _parse_abv_percent(value: str | None) -> float | None:
