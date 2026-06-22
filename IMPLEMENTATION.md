@@ -13,8 +13,9 @@ This file captures the phased execution plan that implements the architecture. F
 - Implement `comparison` module as pure functions with unit tests. Cover fuzzy, numeric, and unit-normalize logic.
 
 2. Vision Service
-- Implement `vision_adapter` interface and a local/mock adapter for development.
-- Add image preprocess functions: downscale, re-encode, size checks.
+- Implement `VisionService` interface, OpenAI Responses adapter, and local/mock adapter for development and tests.
+- Add image preprocess functions: EXIF orientation, RGB conversion, downscale, JPEG re-encode, and corrupt-image handling.
+- Use strict structured JSON output for `ExtractedLabel`; malformed, refused, or incomplete model output maps to typed vision errors.
 
 3. `POST /verify` endpoint
 - Wire validation, preprocess, call to vision adapter, and comparison engine. Return `VerificationResult`, including the agreed timeout behavior: model timeouts return `NEEDS_REVIEW` with field-level `MODEL_TIMEOUT` reason codes, not `504`.
