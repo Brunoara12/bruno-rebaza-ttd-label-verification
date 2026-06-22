@@ -57,6 +57,33 @@ textarea:focus-visible {
   margin-bottom: 24px;
 }
 
+.view-switch {
+  background: #ffffff;
+  border: 2px solid #c4cad3;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 24px;
+  padding: 6px;
+}
+
+.view-switch button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #253044;
+  font-size: 1.15rem;
+  font-weight: 900;
+  min-height: 56px;
+  padding: 12px 16px;
+}
+
+.view-switch button.active {
+  background: #174ea6;
+  color: #ffffff;
+}
+
 .eyebrow {
   color: #5b5f68;
   font-size: 1rem;
@@ -287,6 +314,226 @@ h4 {
   padding: 20px;
 }
 
+.progress-panel p {
+  margin-bottom: 12px;
+}
+
+.progress-panel .progress-elapsed {
+  font-size: 1.05rem;
+  margin-bottom: 0;
+}
+
+.progress-track {
+  background: #fff0c2;
+  border: 2px solid #ad7600;
+  border-radius: 999px;
+  height: 18px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-track span {
+  animation: progress-slide 1.2s ease-in-out infinite;
+  background: #174ea6;
+  border-radius: 999px;
+  bottom: 0;
+  display: block;
+  left: -35%;
+  position: absolute;
+  top: 0;
+  width: 35%;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(385%);
+  }
+}
+
+.batch-intro p {
+  color: #303846;
+  font-size: 1.14rem;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+
+.batch-items,
+.batch-results,
+.batch-result-list {
+  display: grid;
+  gap: 24px;
+}
+
+.batch-item {
+  display: grid;
+  gap: 22px;
+}
+
+.batch-item-heading {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.batch-item-heading h2 {
+  margin-bottom: 0;
+}
+
+.remove-label-action {
+  background: #ffffff;
+  border: 2px solid #b42318;
+  border-radius: 8px;
+  color: #8a1c12;
+  font-size: 1rem;
+  font-weight: 900;
+  min-height: 48px;
+  padding: 10px 14px;
+}
+
+.batch-image-field {
+  display: grid;
+  gap: 14px;
+}
+
+.batch-preview {
+  max-width: 360px;
+}
+
+.batch-preview img {
+  max-height: 220px;
+}
+
+.batch-actions {
+  align-items: stretch;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(180px, 0.35fr) minmax(240px, 1fr);
+}
+
+.add-label-action {
+  background: #243044;
+  margin-top: 0;
+}
+
+.batch-results {
+  margin-top: 32px;
+}
+
+.batch-summary {
+  background: #ffffff;
+  border: 2px solid #d7dae0;
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+}
+
+.summary-counts {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-count {
+  border: 2px solid #c4cad3;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.summary-count span,
+.summary-count strong {
+  display: block;
+}
+
+.summary-count span {
+  color: #111827;
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.summary-count strong {
+  color: #303846;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.batch-summary .latency {
+  color: #5b5f68;
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0;
+}
+
+.batch-result-item {
+  background: #ffffff;
+  border: 2px solid #d7dae0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.batch-result-item.approved {
+  border-color: #197a3a;
+}
+
+.batch-result-item.needs-review {
+  border-color: #b42318;
+}
+
+.batch-result-item summary {
+  align-items: center;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 18px;
+}
+
+.batch-result-title {
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.batch-result-note {
+  color: #303846;
+  font-size: 1.04rem;
+  grid-column: 1 / -1;
+  line-height: 1.4;
+}
+
+.batch-result-detail {
+  border-top: 2px solid #d7dae0;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.batch-error-detail p {
+  color: #303846;
+  font-size: 1.08rem;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+
+.batch-error-detail ul {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.failure-list.compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
 .results {
   display: grid;
   gap: 24px;
@@ -472,6 +719,21 @@ dd {
 
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .batch-actions,
+  .summary-counts {
+    grid-template-columns: 1fr;
+  }
+
+  .batch-item-heading,
+  .batch-result-item summary {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .batch-item-heading {
+    flex-direction: column;
   }
 
   .field label {

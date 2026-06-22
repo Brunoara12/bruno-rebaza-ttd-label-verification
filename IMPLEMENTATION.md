@@ -25,9 +25,10 @@ This file captures the phased execution plan that implements the architecture. F
 - Build a high-contrast React form for one label image plus the seven expected fields. Post `multipart/form-data` to `/verify`, show readable loading/errors, and render a prominent `APPROVED` / `NEEDS REVIEW` verdict with per-field PASS/FAIL and expected-vs-found details.
 
 5. Batch support
-- Backend: accept multi-pair uploads; process items concurrently with a bounded worker pool.
-- Frontend: batch upload UI and summary table.
-- Acceptance note: MVP is not complete until batch upload works end-to-end with item-level results and summary counts.
+- Backend: accept multi-pair uploads at `POST /verify/batch`; process items concurrently with a bounded worker pool (`BATCH_WORKER_CONCURRENCY`, default 3) and cap batch size (`BATCH_MAX_ITEMS`, default 10).
+- Isolate per-item failures: one bad label/image/model result does not fail the whole batch. Completed items return `VerificationResult`; item errors count as needs review in the batch summary.
+- Frontend: batch upload UI, delayed indeterminate progress indicator, summary counts, and drill-down for each individual result.
+- Acceptance note: MVP is not complete until batch upload works end-to-end with 3+ labels, correct passed / needs-review / total counts, and individually viewable results.
 
 6. Robustness & performance
 - Add retries, model fallback, deeper monitoring, accessibility improvements.

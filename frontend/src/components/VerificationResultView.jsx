@@ -44,7 +44,7 @@ export function VerificationResultView({ result, onReset, resultRef }) {
   );
 }
 
-function ResultRow({ fieldResult }) {
+export function ResultRow({ fieldResult }) {
   const isPass = fieldResult.status === "PASS";
 
   return (

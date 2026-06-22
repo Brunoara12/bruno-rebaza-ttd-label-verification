@@ -14,6 +14,9 @@ export const ACCEPTED_IMAGE_TYPES = new Set([
   "image/webp",
 ]);
 
+export const BATCH_PROGRESS_DELAY_MS = 700;
+export const MAX_BATCH_ITEMS = 10;
+
 export const FIELD_DEFINITIONS = [
   {
     name: "brand_name",

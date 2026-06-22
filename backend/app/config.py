@@ -12,6 +12,8 @@ DEFAULT_VISION_TIMEOUT_SECONDS = 4.0
 DEFAULT_VISION_MAX_IMAGE_EDGE_PX = 1600
 DEFAULT_VISION_JPEG_QUALITY = 82
 DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+DEFAULT_BATCH_MAX_ITEMS = 10
+DEFAULT_BATCH_WORKER_CONCURRENCY = 3
 
 
 class Settings:
@@ -38,6 +40,14 @@ class Settings:
         self.max_upload_bytes = self._parse_int(
             getenv("MAX_UPLOAD_BYTES"),
             DEFAULT_MAX_UPLOAD_BYTES,
+        )
+        self.batch_max_items = self._parse_int(
+            getenv("BATCH_MAX_ITEMS"),
+            DEFAULT_BATCH_MAX_ITEMS,
+        )
+        self.batch_worker_concurrency = self._parse_int(
+            getenv("BATCH_WORKER_CONCURRENCY"),
+            DEFAULT_BATCH_WORKER_CONCURRENCY,
         )
 
     @staticmethod

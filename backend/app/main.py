@@ -1,4 +1,7 @@
+import asyncio
+import json
 import logging
+from json import JSONDecodeError
 from time import perf_counter
 from typing import Any
 
@@ -12,7 +15,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from backend.app.comparison import compare_label
 from backend.app.config import get_settings
 from backend.app.image_preprocess import ImagePreprocessError, preprocess_image
-from backend.app.schemas import ApplicationData, FieldResult, VerificationResult
+from backend.app.schemas import (
+    ApplicationData,
+    BatchItemResult,
+    BatchSummary,
+    BatchVerificationResult,
+    ErrorField,
+    FieldResult,
+    ItemError,
+    VerificationResult,
+)
 from backend.app.vision_service import (
     VisionParseError,
     VisionProviderError,
@@ -152,51 +164,43 @@ async def verify_label(
         country_of_origin=country_of_origin,
         government_warning=government_warning,
     )
-    _validate_upload_content_type(image)
-    image_bytes = await _read_upload_bytes(image)
-
-    try:
-        preprocessed_image = preprocess_image(
-            image_bytes,
-            max_edge_px=settings.vision_max_image_edge_px,
-            jpeg_quality=settings.vision_jpeg_quality,
-        )
-    except ImagePreprocessError as exc:
-        raise ApiError(
-            400,
-            "INVALID_IMAGE",
-            "The image could not be read. Please upload a clear JPEG, PNG, or WEBP image.",
-            [
-                _field_error(
-                    "image",
-                    "INVALID_IMAGE",
-                    "The image file is corrupt or unsupported.",
-                )
-            ],
-        ) from exc
-
-    try:
-        extracted_label = vision_service.extract_label(preprocessed_image)
-    except VisionTimeoutError:
-        result = _failed_verification_result(
-            application,
-            "MODEL_TIMEOUT",
-            _elapsed_ms(started_at),
-        )
-        _finalize_verification_response(response, result)
-        return result
-    except VisionParseError:
-        result = _failed_verification_result(
-            application,
-            "PARSE_ERROR",
-            _elapsed_ms(started_at),
-        )
-        _finalize_verification_response(response, result)
-        return result
-
-    result = compare_label(application, extracted_label)
-    result = result.model_copy(update={"latency_ms": _elapsed_ms(started_at)})
+    result = await _verify_single_upload(application, image, vision_service, started_at)
     _finalize_verification_response(response, result)
+    return result
+
+
+@app.post("/verify/batch", response_model=BatchVerificationResult)
+async def verify_label_batch(
+    response: Response,
+    items_json: str = Form(...),
+    images: list[UploadFile] = File(...),
+    vision_service: VisionService = Depends(get_vision_service_dependency),
+) -> BatchVerificationResult:
+    started_at = perf_counter()
+    batch_items = _batch_items_from_json(items_json)
+    _validate_batch_size(batch_items)
+    _validate_batch_image_count(batch_items, images)
+
+    worker_count = max(1, settings.batch_worker_concurrency)
+    semaphore = asyncio.Semaphore(worker_count)
+
+    async def verify_batch_item(index: int, raw_item: dict[str, Any]) -> BatchItemResult:
+        async with semaphore:
+            return await _verify_batch_item(index, raw_item, images[index], vision_service)
+
+    item_results = await asyncio.gather(
+        *[
+            verify_batch_item(index, raw_item)
+            for index, raw_item in enumerate(batch_items)
+        ]
+    )
+    result = BatchVerificationResult(
+        items=item_results,
+        summary=_batch_summary(item_results),
+        latency_ms=_elapsed_ms(started_at),
+    )
+    response.headers["X-Batch-Verification-Latency-ms"] = str(result.latency_ms)
+    _log_batch_result(result, worker_count)
     return result
 
 
@@ -230,6 +234,269 @@ def _application_data_from_form(**raw_fields: str) -> ApplicationData:
             "Please complete all required application fields.",
             _pydantic_validation_fields(exc),
         ) from exc
+
+
+async def _verify_single_upload(
+    application: ApplicationData,
+    image: UploadFile,
+    vision_service: VisionService,
+    started_at: float,
+) -> VerificationResult:
+    _validate_upload_content_type(image)
+    image_bytes = await _read_upload_bytes(image)
+
+    try:
+        preprocessed_image = preprocess_image(
+            image_bytes,
+            max_edge_px=settings.vision_max_image_edge_px,
+            jpeg_quality=settings.vision_jpeg_quality,
+        )
+    except ImagePreprocessError as exc:
+        raise ApiError(
+            400,
+            "INVALID_IMAGE",
+            "The image could not be read. Please upload a clear JPEG, PNG, or WEBP image.",
+            [
+                _field_error(
+                    "image",
+                    "INVALID_IMAGE",
+                    "The image file is corrupt or unsupported.",
+                )
+            ],
+        ) from exc
+
+    try:
+        extracted_label = await asyncio.to_thread(
+            vision_service.extract_label,
+            preprocessed_image,
+        )
+    except VisionTimeoutError:
+        return _failed_verification_result(
+            application,
+            "MODEL_TIMEOUT",
+            _elapsed_ms(started_at),
+        )
+    except VisionParseError:
+        return _failed_verification_result(
+            application,
+            "PARSE_ERROR",
+            _elapsed_ms(started_at),
+        )
+
+    result = compare_label(application, extracted_label)
+    return result.model_copy(update={"latency_ms": _elapsed_ms(started_at)})
+
+
+def _batch_items_from_json(items_json: str) -> list[dict[str, Any]]:
+    try:
+        batch_items = json.loads(items_json)
+    except JSONDecodeError as exc:
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            "Please provide readable batch label details.",
+            [
+                _field_error(
+                    "items_json",
+                    "INVALID_JSON",
+                    "The batch details could not be read.",
+                )
+            ],
+        ) from exc
+
+    if not isinstance(batch_items, list):
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            "Please provide one set of label details for each image.",
+            [
+                _field_error(
+                    "items_json",
+                    "INVALID_BATCH",
+                    "Batch details must be a list.",
+                )
+            ],
+        )
+
+    return batch_items
+
+
+def _validate_batch_size(batch_items: list[dict[str, Any]]) -> None:
+    if not batch_items:
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            "Please add at least one label to the batch.",
+            [
+                _field_error(
+                    "items_json",
+                    "EMPTY_BATCH",
+                    "The batch must include at least one label.",
+                )
+            ],
+        )
+
+    if len(batch_items) > settings.batch_max_items:
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            f"Please check no more than {settings.batch_max_items} labels at once.",
+            [
+                _field_error(
+                    "items_json",
+                    "TOO_MANY_ITEMS",
+                    f"The batch has more than {settings.batch_max_items} labels.",
+                )
+            ],
+        )
+
+
+def _validate_batch_image_count(
+    batch_items: list[dict[str, Any]],
+    images: list[UploadFile],
+) -> None:
+    if len(images) != len(batch_items):
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            "Please provide one image for each label in the batch.",
+            [
+                _field_error(
+                    "images",
+                    "BATCH_IMAGE_COUNT_MISMATCH",
+                    "The number of images must match the number of label detail rows.",
+                )
+            ],
+        )
+
+
+async def _verify_batch_item(
+    index: int,
+    raw_item: dict[str, Any],
+    image: UploadFile,
+    vision_service: VisionService,
+) -> BatchItemResult:
+    client_id = _batch_item_client_id(raw_item, index)
+    filename = image.filename or None
+    started_at = perf_counter()
+
+    if not isinstance(raw_item, dict):
+        return _batch_item_error_result(
+            index,
+            client_id,
+            filename,
+            ApiError(
+                422,
+                "VALIDATION_ERROR",
+                "Please provide label details for this item.",
+                [
+                    _field_error(
+                        "item",
+                        "INVALID_ITEM",
+                        "This batch item must be a set of label details.",
+                    )
+                ],
+            ),
+        )
+
+    try:
+        application = _application_data_from_form(
+            **{
+                field_name: raw_item.get(field_name, "")
+                for field_name in APPLICATION_FIELD_ORDER
+            }
+        )
+        result = await _verify_single_upload(application, image, vision_service, started_at)
+        return BatchItemResult(
+            client_id=client_id,
+            index=index,
+            filename=filename,
+            status="COMPLETED",
+            result=result,
+            error=None,
+        )
+    except ApiError as exc:
+        return _batch_item_error_result(index, client_id, filename, exc)
+    except VisionProviderError as exc:
+        logger.error(
+            "Vision provider unavailable for batch item.",
+            extra={
+                "error_code": "VISION_PROVIDER_ERROR",
+                "batch_item_index": index,
+            },
+        )
+        return _batch_item_error_result(
+            index,
+            client_id,
+            filename,
+            ApiError(
+                502,
+                "VISION_PROVIDER_ERROR",
+                "The label checker is not available right now. Please try again.",
+            ),
+        )
+    except Exception as exc:
+        logger.error(
+            "Unexpected batch item error.",
+            extra={
+                "error_code": "BATCH_ITEM_ERROR",
+                "batch_item_index": index,
+                "exception_type": exc.__class__.__name__,
+            },
+        )
+        return _batch_item_error_result(
+            index,
+            client_id,
+            filename,
+            ApiError(
+                500,
+                "INTERNAL_SERVER_ERROR",
+                "Something went wrong while checking this label. Please try again.",
+            ),
+        )
+
+
+def _batch_item_client_id(raw_item: Any, index: int) -> str:
+    if isinstance(raw_item, dict):
+        client_id = raw_item.get("client_id")
+        if isinstance(client_id, str) and client_id.strip():
+            return client_id.strip()
+
+    return f"item-{index + 1}"
+
+
+def _batch_item_error_result(
+    index: int,
+    client_id: str,
+    filename: str | None,
+    error: ApiError,
+) -> BatchItemResult:
+    return BatchItemResult(
+        client_id=client_id,
+        index=index,
+        filename=filename,
+        status="ERROR",
+        result=None,
+        error=ItemError(
+            code=error.code,
+            message=error.message,
+            fields=[ErrorField(**field) for field in error.fields],
+        ),
+    )
+
+
+def _batch_summary(item_results: list[BatchItemResult]) -> BatchSummary:
+    passed = sum(
+        1
+        for item in item_results
+        if item.result is not None and item.result.overall_verdict == "APPROVED"
+    )
+    total = len(item_results)
+    return BatchSummary(
+        passed=passed,
+        needs_review=total - passed,
+        total=total,
+    )
 
 
 def _validate_upload_content_type(upload_file: UploadFile) -> None:
@@ -318,6 +585,26 @@ def _log_verification_result(result: VerificationResult) -> None:
             "overall_verdict": result.overall_verdict,
             "sla_exceeded": sla_exceeded,
             "failed_fields": failed_fields,
+        },
+    )
+
+
+def _log_batch_result(result: BatchVerificationResult, worker_count: int) -> None:
+    item_sla_exceeded = any(
+        item.result is not None and item.result.latency_ms >= SINGLE_LABEL_SLA_MS
+        for item in result.items
+    )
+    level = logging.WARNING if item_sla_exceeded else logging.INFO
+    logger.log(
+        level,
+        "Batch verification completed.",
+        extra={
+            "latency_ms": result.latency_ms,
+            "item_count": result.summary.total,
+            "passed": result.summary.passed,
+            "needs_review": result.summary.needs_review,
+            "worker_concurrency": worker_count,
+            "item_sla_exceeded": item_sla_exceeded,
         },
     )
 
