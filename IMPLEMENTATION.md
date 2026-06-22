@@ -22,7 +22,7 @@ This file captures the phased execution plan that implements the architecture. F
 - Add request-level latency instrumentation and structured logging. Return `latency_ms` in the body and `X-Verification-Latency-ms` in the response header. Shape validation and server errors with readable messages and no stack traces.
 
 4. Frontend single-label flow
-- Build minimal form (React or plain HTML/JS) that posts `multipart/form-data` to `/verify` and shows per-field PASS/FAIL.
+- Build a high-contrast React form for one label image plus the seven expected fields. Post `multipart/form-data` to `/verify`, show readable loading/errors, and render a prominent `APPROVED` / `NEEDS REVIEW` verdict with per-field PASS/FAIL and expected-vs-found details.
 
 5. Batch support
 - Backend: accept multi-pair uploads; process items concurrently with a bounded worker pool.

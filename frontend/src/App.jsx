@@ -1,76 +1,139 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+import { ErrorAlert } from "./components/ErrorAlert";
+import { LoadingPanel } from "./components/LoadingPanel";
+import { StickySubmitAction } from "./components/StickySubmitAction";
+import { VerificationForm } from "./components/VerificationForm";
+import { VerificationResultView } from "./components/VerificationResultView";
+import { verifyLabel } from "./verification/api";
+import { INITIAL_FORM_VALUES } from "./verification/constants";
+import {
+  buildVerificationFormData,
+  focusFirstError,
+  validateForm,
+  withoutKey,
+} from "./verification/form";
 
 export default function App() {
-  const [health, setHealth] = useState(null);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  const healthUrl = useMemo(() => {
-    return `${API_BASE_URL.replace(/\/$/, "")}/health`;
-  }, []);
+  const [formValues, setFormValues] = useState(INITIAL_FORM_VALUES);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [generalError, setGeneralError] = useState("");
+  const [result, setResult] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef(null);
+  const resultRef = useRef(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchHealth() {
-      try {
-        const response = await fetch(healthUrl);
-
-        if (!response.ok) {
-          throw new Error(`Health check failed with ${response.status}`);
-        }
-
-        const payload = await response.json();
-
-        if (isMounted) {
-          setHealth(payload);
-          setError("");
-        }
-      } catch (caughtError) {
-        if (isMounted) {
-          setHealth(null);
-          setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Unable to reach the backend.",
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+    if (!imageFile) {
+      setImagePreviewUrl("");
+      return undefined;
     }
 
-    fetchHealth();
+    const previewUrl = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(previewUrl);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [healthUrl]);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [imageFile]);
 
-  const isConnected = health?.status === "ok";
+  useEffect(() => {
+    if (result) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result]);
+
+  function handleFieldChange(event) {
+    const { name, value } = event.target;
+    setFormValues((currentValues) => ({ ...currentValues, [name]: value }));
+    setFieldErrors((currentErrors) => withoutKey(currentErrors, name));
+    setGeneralError("");
+    setResult(null);
+  }
+
+  function handleImageChange(event) {
+    const selectedFile = event.target.files?.[0] ?? null;
+    setImageFile(selectedFile);
+    setFieldErrors((currentErrors) => withoutKey(currentErrors, "image"));
+    setGeneralError("");
+    setResult(null);
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const validationErrors = validateForm(imageFile, formValues);
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setGeneralError("Please fix the highlighted items.");
+      focusFirstError(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setGeneralError("");
+    setFieldErrors({});
+    setResult(null);
+
+    try {
+      const formData = buildVerificationFormData(imageFile, formValues);
+      setResult(await verifyLabel(formData));
+    } catch (error) {
+      if (error?.message && error?.fields) {
+        setGeneralError(error.message);
+        setFieldErrors(error.fields);
+        focusFirstError(error.fields);
+      } else {
+        setGeneralError("The label checker is not available right now. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function resetForm() {
+    setFormValues(INITIAL_FORM_VALUES);
+    setImageFile(null);
+    setImagePreviewUrl("");
+    setFieldErrors({});
+    setGeneralError("");
+    setResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.focus();
+    }
+  }
 
   return (
     <main className="page-shell">
-      <section className="status-panel" aria-labelledby="app-title">
-        <p className="eyebrow">Phase 0 deploy check</p>
-        <h1 id="app-title">TTB Label Verification</h1>
-        <div
-          className={isConnected ? "status-pill connected" : "status-pill pending"}
-          aria-live="polite"
-        >
-          {isLoading && "Checking backend"}
-          {!isLoading && isConnected && "Backend connected"}
-          {!isLoading && !isConnected && "Backend unavailable"}
-        </div>
-        <pre className="health-output">
-          {health ? JSON.stringify(health, null, 2) : error || "Waiting for response..."}
-        </pre>
-      </section>
+      <div className="app-frame">
+        <header className="page-header">
+          <p className="eyebrow">TTB Label Verification</p>
+          <h1>Check One Label</h1>
+        </header>
+
+        <ErrorAlert generalError={generalError} fieldErrors={fieldErrors} />
+
+        <VerificationForm
+          formValues={formValues}
+          imageFile={imageFile}
+          imagePreviewUrl={imagePreviewUrl}
+          fieldErrors={fieldErrors}
+          isSubmitting={isSubmitting}
+          fileInputRef={fileInputRef}
+          onFieldChange={handleFieldChange}
+          onImageChange={handleImageChange}
+          onSubmit={handleSubmit}
+        />
+
+        <LoadingPanel isSubmitting={isSubmitting} />
+
+        {result && (
+          <VerificationResultView result={result} onReset={resetForm} resultRef={resultRef} />
+        )}
+      </div>
+
+      <StickySubmitAction isHidden={Boolean(result)} isSubmitting={isSubmitting} />
     </main>
   );
 }
-
