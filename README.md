@@ -1,10 +1,10 @@
 ﻿# TTB Label Verification
 
-TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, and Phase 2 adds a mockable vision extraction service.
+TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, Phase 2 added a mockable vision extraction service, and Phase 3 wires the single-label verification API.
 
 ## Status
 
-Phase 0, Phase 1, and Phase 2 are complete.
+Phase 0, Phase 1, Phase 2, and Phase 3 are complete.
 
 - Backend health endpoint is implemented at `GET /health`.
 - Frontend is deployed and displays backend connectivity status.
@@ -12,6 +12,7 @@ Phase 0, Phase 1, and Phase 2 are complete.
 - Pydantic models define the application data, extracted label, field result, and verification result contracts.
 - The comparison engine is pure Python: fuzzy brand/class/producer matching, country synonyms, ABV normalization, net-content unit normalization, and exact case-sensitive government-warning comparison.
 - The VisionService adds image preprocessing, strict structured extraction, defensive parsing, and a mock provider for tests and local development.
+- `POST /verify` accepts a label image plus application data as multipart form data and returns a full `VerificationResult` with per-field expected/found values, verdict, latency, and readable errors.
 
 ## Deployed URLs
 
@@ -37,6 +38,22 @@ uv run uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Open `http://localhost:8000/health`.
+
+Submit one label verification request:
+
+```bash
+curl -X POST http://localhost:8000/verify \
+  -F "image=@labels/sample-label.png;type=image/png" \
+  -F "brand_name=Acme Reserve" \
+  -F "class_type=Straight Bourbon Whiskey" \
+  -F "abv=45%" \
+  -F "net_contents=750 mL" \
+  -F "producer=Acme Distilling Co." \
+  -F "country_of_origin=United States" \
+  -F "government_warning=GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+```
+
+The response is a `VerificationResult` with `results`, `overall_verdict`, and `latency_ms`. The same latency is also returned in `X-Verification-Latency-ms`.
 
 Run the frontend from `frontend`:
 
@@ -81,6 +98,7 @@ VISION_MODEL=gpt-5.4-mini
 VISION_TIMEOUT_SECONDS=4
 VISION_MAX_IMAGE_EDGE_PX=1600
 VISION_JPEG_QUALITY=82
+MAX_UPLOAD_BYTES=10485760
 OPENAI_API_KEY=<set in host environment only>
 ```
 
