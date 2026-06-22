@@ -63,7 +63,7 @@ def assert_fail(result, reason_code: str) -> None:
 
 def test_application_data_requires_expected_fields_and_rejects_extra_fields() -> None:
     with pytest.raises(ValidationError):
-        ApplicationData(brand_name="Only one field")
+        ApplicationData.model_validate({"brand_name": "Only one field"})
 
     with pytest.raises(ValidationError):
         application_data(unexpected_field="not allowed")

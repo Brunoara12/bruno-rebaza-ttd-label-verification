@@ -1,17 +1,17 @@
 ﻿# TTB Label Verification
 
-TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, and Phase 1 adds the typed data models plus a pure, unit-testable comparison engine.
+TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, and Phase 2 adds a mockable vision extraction service.
 
 ## Status
 
-Phase 0 and Phase 1 are complete.
+Phase 0, Phase 1, and Phase 2 are complete.
 
 - Backend health endpoint is implemented at `GET /health`.
 - Frontend is deployed and displays backend connectivity status.
 - Backend and frontend are deployed separately to match the planned proof-of-concept architecture.
 - Pydantic models define the application data, extracted label, field result, and verification result contracts.
-- The comparison engine is pure Python with no AI calls yet: fuzzy brand/class/producer matching, country synonyms, ABV normalization, net-content unit normalization, and exact case-sensitive government-warning comparison.
-- Phase 2 will add the vision adapter and local/mock extraction path.
+- The comparison engine is pure Python: fuzzy brand/class/producer matching, country synonyms, ABV normalization, net-content unit normalization, and exact case-sensitive government-warning comparison.
+- The VisionService adds image preprocessing, strict structured extraction, defensive parsing, and a mock provider for tests and local development.
 
 ## Deployed URLs
 
@@ -21,7 +21,7 @@ Phase 0 and Phase 1 are complete.
 
 ## Tech Stack
 
-- Backend: Python 3.12, FastAPI, Uvicorn, Pydantic, RapidFuzz
+- Backend: Python 3.12, FastAPI, Uvicorn, Pydantic, RapidFuzz, Pillow, OpenAI SDK
 - Frontend: React, Vite
 - Package management: uv for Python, npm for frontend assets
 - Deployment: Render for backend, Vercel for frontend
@@ -55,6 +55,14 @@ Run backend tests from the repo root:
 uv run pytest
 ```
 
+Run one real vision extraction sample from the repo root:
+
+```bash
+uv run python scripts/extract_label_sample.py labels/Clover-Hill-wine-back-label.png
+```
+
+This sample script requires `OPENAI_API_KEY` to be set.
+
 Build the frontend from `frontend`:
 
 ```bash
@@ -68,6 +76,12 @@ Backend:
 ```text
 APP_ENV=production
 CORS_ALLOWED_ORIGINS=https://ttd-label-verification.vercel.app
+VISION_PROVIDER=openai
+VISION_MODEL=gpt-5.4-mini
+VISION_TIMEOUT_SECONDS=4
+VISION_MAX_IMAGE_EDGE_PX=1600
+VISION_JPEG_QUALITY=82
+OPENAI_API_KEY=<set in host environment only>
 ```
 
 Frontend:
