@@ -2,7 +2,7 @@
 
 ## System Overview
 
-A thin web frontend collects an image plus structured application data and posts it to a stateless FastAPI backend. The backend validates input, preprocesses the image, calls a vision model for structured extraction, then runs the comparison engine field-by-field and returns per-field PASS/FAIL plus an overall verdict. No database â€” each request is self-contained.
+A thin web frontend collects an image plus structured application data and posts it to a stateless FastAPI backend. The backend validates input, preprocesses the image, calls a vision model for structured extraction, then runs the comparison engine field-by-field and returns per-field PASS/FAIL plus an overall verdict. No database - each request is self-contained.
 
 > **Principles**: stateless, isolated components, testable comparison logic, environment-only secrets, under-5-second SLA for single-label verification.
 
@@ -52,8 +52,8 @@ flowchart TB
 
 Component | Responsibility | Why isolated
 ---|---:|---
-Comparison Engine | Field-by-field match logic (fuzzy / normalized / exact) | Pure functions, zero I/O â†’ fully unit-testable without the model
-Vision Service | Image â†’ structured `ExtractedLabel` via the vision model | Slow, nondeterministic; isolate so it can be mocked in tests
+Comparison Engine | Field-by-field match logic (fuzzy / normalized / exact) | Pure functions, zero I/O -> fully unit-testable without the model
+Vision Service | Image -> structured `ExtractedLabel` via the vision model | Slow, nondeterministic; isolate so it can be mocked in tests
 API layer | HTTP, validation, orchestration, error shaping | Thin; delegates to services above
 Image Preprocess | Downscale / re-encode before model call | Directly serves the 5-second budget and cost control
 Frontend | Accessible single-label upload, form, and results; batch summary in the batch phase | Built against a stable API contract
@@ -75,7 +75,7 @@ These models are the contract between frontend, API, Vision Service and Comparis
 - `ExtractedLabel` (vision model output):
   - Same seven fields as above (nullable)
   - `raw_text: str` (full OCRed text)
-  - `extraction_confidence: float` (0.0â€“1.0)
+  - `extraction_confidence: float` (0.0-1.0)
 
 - `FieldResult`:
   - `field: str`
@@ -103,16 +103,17 @@ These models are the contract between frontend, API, Vision Service and Comparis
   - `summary: {passed: int, needs_review: int, total: int}`
   - `latency_ms: int`
 
-**Verdict rule**: any field `FAIL` â‡’ `NEEDS_REVIEW`; all `PASS` â‡’ `APPROVED`.
+**Verdict rule**: any field `FAIL` -> `NEEDS_REVIEW`; all `PASS` -> `APPROVED`.
 
 ## Comparison Strategy (Concrete rules)
 
 Field | Strategy | Concrete rules
 ---|---|---
-Brand Name, Class/Type, Producer | Fuzzy | Normalize: lowercase, remove punctuation, collapse whitespace. Use fuzzy ratio â‰¥ 90 for PASS. Token-aware comparison for short names.
-Country of Origin | Normalize + synonyms | Normalize aliases (USA, U.S.A., United States â†’ `United States`) before fuzzy; then apply fuzzy ratio â‰¥ 95.
-Alcohol Content (ABV) | Numeric normalize | Extract numeric value as float percentage. Compare absolute difference â‰¤ 0.1 (e.g., 45.0 Â± 0.1). Accept formats like `45%`, `45`, `45.0% Alc./Vol.`
-Net Contents | Unit normalize | Parse quantity and unit; convert canonical unit mL. Compare numeric equality with tolerance of Â±1 mL for formatting/OCR noise.
+Brand Name, Class/Type | Fuzzy | Normalize: lowercase, remove punctuation, collapse whitespace. Use fuzzy ratio >= 90 for PASS. Token-aware comparison for short names.
+Producer | Fuzzy after role-prefix removal | Normalize like other fuzzy fields, then remove leading label role phrases such as `distilled and bottled by`, `produced by`, and `imported by` before comparison. Use fuzzy ratio >= 90 for PASS.
+Country of Origin | Normalize + synonyms + US location cues | Normalize aliases (USA, U.S.A., United States -> `United States`). If the extracted text contains a US city/state cue such as `Pittsburgh, PA` or `Louisville, Kentucky`, canonicalize it to `United States`; then apply fuzzy ratio >= 95.
+Alcohol Content (ABV) | Numeric normalize | Extract numeric value as float percentage. Compare absolute difference <= 0.1 (e.g., 45.0 +/- 0.1). Accept formats like `45%`, `45`, `45.0% Alc./Vol.`
+Net Contents | Unit normalize | Parse quantity and unit; convert canonical unit mL. Compare numeric equality with tolerance of +/-1 mL for formatting/OCR noise.
 Government Warning | EXACT after whitespace collapse | Collapse consecutive whitespace only; preserve case and punctuation; no fuzzy matching. Compare the normalized warning text against the canonical statement after applying the same whitespace collapse. On `FAIL`, always return extracted warning text for human override.
 
 Design note: thresholds are intentionally conservative; keep them configurable via environment or config file.
@@ -153,7 +154,7 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 
 ## Future Considerations
 
-- Add confidence-based automated routing (if extraction_confidence < X% â†’ manual review).
+- Add confidence-based automated routing (if extraction_confidence < X% -> manual review).
 - Consider caching identical images' extracted labels if repeated uploads expected.
 - Add an audit log for legal/compliance needs (append-only, retention policy).
 

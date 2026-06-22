@@ -8,6 +8,7 @@ from backend.app.comparison import (
     compare_government_warning,
     compare_label,
     compare_net_contents,
+    compare_producer,
 )
 from backend.app.schemas import ApplicationData, ExtractedLabel
 
@@ -112,8 +113,37 @@ def test_fuzzy_brand_missing_found_value_fails() -> None:
     assert_fail(result, "MISSING_FIELD")
 
 
+@pytest.mark.parametrize(
+    "found",
+    [
+        "Distilled and Bottled By : ABC Distillery",
+        "Produced by ABC Distillery",
+        "Imported and Bottled by ABC Distillery",
+    ],
+)
+def test_producer_role_prefixes_do_not_prevent_match(found: str) -> None:
+    result = compare_producer("ABC Distillery", found)
+
+    assert_pass(result)
+
+
 def test_usa_country_synonym_matches_united_states() -> None:
     result = compare_country_of_origin("United States", "USA")
+
+    assert_pass(result)
+
+
+@pytest.mark.parametrize(
+    "found",
+    [
+        "Distilled in Pittsburgh, PA",
+        "Distilled in Pittsburgh PA",
+        "Bottled in Louisville, Kentucky",
+        "Produced in Brooklyn, NY",
+    ],
+)
+def test_us_city_and_state_location_matches_usa_country(found: str) -> None:
+    result = compare_country_of_origin("USA", found)
 
     assert_pass(result)
 

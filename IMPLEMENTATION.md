@@ -39,7 +39,9 @@ This file captures the phased execution plan that implements the architecture. F
 
 7. Deploy verify end-to-end + README
 - Deploy frontend and backend; run end-to-end verification against production model endpoint.
-- Update `README.md` with run and deploy instructions.
+- Update `README.md` with setup/run instructions, deployed URLs, public repo, approach, tools, assumptions, limitations, and final verification commands.
+- Run the final submission audit: no tracked `.env` files, no obvious hardcoded secrets in current tracked files or git history, backend health passes, live single-label and batch flows work, warning exact-match behavior is verified, imperfect-image behavior returns a normal reviewable result, and the deployed benchmark stays under the 5-second single-label SLA.
+- Acceptance note: Phase 7 is not complete until `docs/plan/phase-7.md` records the audit results and live end-to-end evidence.
 
 ---
 
