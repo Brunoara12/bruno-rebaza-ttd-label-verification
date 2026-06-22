@@ -9,6 +9,7 @@ export function VerificationResultView({ result, onReset, resultRef }) {
       className={isApproved ? "results approved" : "results needs-review"}
       ref={resultRef}
       aria-labelledby="result-heading"
+      tabIndex="-1"
     >
       <div className="verdict-panel">
         <p className="eyebrow">Result</p>

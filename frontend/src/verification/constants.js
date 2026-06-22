@@ -16,6 +16,8 @@ export const ACCEPTED_IMAGE_TYPES = new Set([
 
 export const BATCH_PROGRESS_DELAY_MS = 700;
 export const MAX_BATCH_ITEMS = 10;
+export const MAX_UPLOAD_BYTES = 10485760;
+export const MAX_UPLOAD_MB = 10;
 
 export const FIELD_DEFINITIONS = [
   {

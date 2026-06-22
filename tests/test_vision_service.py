@@ -11,6 +11,7 @@ from backend.app.vision_service import (
     OpenAIVisionService,
     VisionParseError,
     VisionTimeoutError,
+    DEFAULT_MAX_OUTPUT_TOKENS,
     _payload_from_response,
 )
 
@@ -99,7 +100,7 @@ def test_openai_service_sends_structured_schema_prompt_and_image_payload() -> No
     call = client.responses.calls[0]
     assert call["model"] == "test-model"
     assert call["timeout"] == 2.5
-    assert call["max_output_tokens"] == 1200
+    assert call["max_output_tokens"] == DEFAULT_MAX_OUTPUT_TOKENS
     assert call["text"]["format"]["type"] == "json_schema"
     assert call["text"]["format"]["strict"] is True
     assert call["text"]["format"]["schema"]["additionalProperties"] is False

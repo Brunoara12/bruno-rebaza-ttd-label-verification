@@ -1,4 +1,9 @@
-import { ACCEPTED_IMAGE_TYPES, FIELD_DEFINITIONS } from "./constants";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  FIELD_DEFINITIONS,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_MB,
+} from "./constants";
 
 export function buildVerificationFormData(imageFile, formValues) {
   const formData = new FormData();
@@ -33,6 +38,8 @@ export function validateForm(imageFile, formValues) {
     errors.image = "Please choose a label photo.";
   } else if (!ACCEPTED_IMAGE_TYPES.has(imageFile.type)) {
     errors.image = "Please choose a JPEG, PNG, or WEBP image.";
+  } else if (imageFile.size > MAX_UPLOAD_BYTES) {
+    errors.image = `Please choose a label photo smaller than ${MAX_UPLOAD_MB} MB.`;
   }
 
   FIELD_DEFINITIONS.forEach((field) => {

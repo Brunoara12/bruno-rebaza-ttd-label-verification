@@ -4,8 +4,8 @@ from io import BytesIO
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 
-DEFAULT_MAX_IMAGE_EDGE_PX = 1600
-DEFAULT_JPEG_QUALITY = 82
+DEFAULT_MAX_IMAGE_EDGE_PX = 1280
+DEFAULT_JPEG_QUALITY = 76
 JPEG_MIME_TYPE = "image/jpeg"
 
 

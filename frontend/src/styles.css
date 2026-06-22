@@ -198,6 +198,7 @@ h4 {
   display: block;
   font-size: 1.1rem;
   margin-top: 18px;
+  min-height: 44px;
   max-width: 100%;
   width: 100%;
 }
@@ -258,7 +259,8 @@ h4 {
 }
 
 .field input[aria-invalid="true"],
-.field textarea[aria-invalid="true"] {
+.field textarea[aria-invalid="true"],
+.file-picker input[aria-invalid="true"] {
   border-color: #b42318;
   box-shadow: 0 0 0 2px rgb(180 35 24 / 0.14);
 }
@@ -392,7 +394,7 @@ h4 {
   color: #8a1c12;
   font-size: 1rem;
   font-weight: 900;
-  min-height: 48px;
+  min-height: 52px;
   padding: 10px 14px;
 }
 
@@ -493,6 +495,7 @@ h4 {
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 64px;
   padding: 18px;
 }
 
@@ -695,6 +698,20 @@ dd {
   font-size: 1.25rem;
   padding: 16px 20px;
   width: 100%;
+}
+
+.results:focus-visible,
+.batch-results:focus-visible {
+  outline: 4px solid #ffbf47;
+  outline-offset: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-track span {
+    animation: none;
+    left: 0;
+    width: 100%;
+  }
 }
 
 @media (max-width: 760px) {

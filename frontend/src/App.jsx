@@ -63,6 +63,7 @@ export default function App() {
   useEffect(() => {
     if ((activeView === "single" && result) || (activeView === "batch" && batchResult)) {
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      resultRef.current?.focus({ preventScroll: true });
     }
   }, [activeView, batchResult, result]);
 

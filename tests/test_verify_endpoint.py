@@ -1,4 +1,5 @@
 from io import BytesIO
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,6 +31,17 @@ class RecordingVisionService:
         if self.exc is not None:
             raise self.exc
         return self.label
+
+
+class SlowVisionService:
+    def __init__(self, delay_seconds: float) -> None:
+        self.delay_seconds = delay_seconds
+        self.images: list[PreprocessedImage] = []
+
+    def extract_label(self, image: PreprocessedImage) -> ExtractedLabel:
+        self.images.append(image)
+        time.sleep(self.delay_seconds)
+        return extracted_label()
 
 
 @pytest.fixture
@@ -132,6 +144,40 @@ def test_warning_mismatch_surfaces_extracted_warning_text(client: TestClient) ->
     assert warning_result["status"] == "FAIL"
     assert warning_result["expected"] == CANONICAL_WARNING
     assert warning_result["found"] == extracted_warning
+
+
+def test_field_mismatch_returns_needs_review_with_failed_field(client: TestClient) -> None:
+    service = RecordingVisionService()
+    override_vision_service(service)
+
+    response = client.post(
+        "/verify",
+        data=application_form(brand_name="Wrong Brand"),
+        files=verify_files(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["overall_verdict"] == "NEEDS_REVIEW"
+    brand_result = payload["results"][0]
+    assert brand_result["field"] == "brand_name"
+    assert brand_result["status"] == "FAIL"
+    assert brand_result["reason_code"] == "BELOW_THRESHOLD"
+
+
+def test_missing_extracted_warning_returns_needs_review(client: TestClient) -> None:
+    service = RecordingVisionService(extracted_label(government_warning=None))
+    override_vision_service(service)
+
+    response = client.post("/verify", data=application_form(), files=verify_files())
+
+    assert response.status_code == 200
+    payload = response.json()
+    warning_result = payload["results"][-1]
+    assert payload["overall_verdict"] == "NEEDS_REVIEW"
+    assert warning_result["field"] == "government_warning"
+    assert warning_result["status"] == "FAIL"
+    assert warning_result["reason_code"] == "MISSING_FIELD"
 
 
 def test_empty_submission_returns_readable_422(client: TestClient) -> None:
@@ -252,6 +298,22 @@ def test_vision_timeout_returns_needs_review_result_not_504(client: TestClient) 
     assert {field["reason_code"] for field in payload["results"]} == {"MODEL_TIMEOUT"}
 
 
+def test_slow_model_call_is_guarded_by_request_timeout(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "vision_timeout_seconds", 0.01)
+    service = SlowVisionService(delay_seconds=0.05)
+    override_vision_service(service)
+
+    response = client.post("/verify", data=application_form(), files=verify_files())
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["overall_verdict"] == "NEEDS_REVIEW"
+    assert {field["reason_code"] for field in payload["results"]} == {"MODEL_TIMEOUT"}
+
+
 def test_vision_parse_error_returns_needs_review_result(client: TestClient) -> None:
     service = RecordingVisionService(exc=VisionParseError("bad json"))
     override_vision_service(service)
@@ -298,7 +360,7 @@ def test_latency_over_sla_is_returned_and_logged(
 ) -> None:
     service = RecordingVisionService()
     override_vision_service(service)
-    readings = iter([0.0, 5.001])
+    readings = iter([0.0, 0.001, 5.001])
     monkeypatch.setattr("backend.app.main.perf_counter", lambda: next(readings))
 
     with caplog.at_level("WARNING", logger="backend.app.main"):

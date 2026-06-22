@@ -3,7 +3,12 @@ import { ResultRow } from "./VerificationResultView";
 
 export function BatchResultView({ result, onReset, resultRef }) {
   return (
-    <section className="batch-results" ref={resultRef} aria-labelledby="batch-result-heading">
+    <section
+      className="batch-results"
+      ref={resultRef}
+      aria-labelledby="batch-result-heading"
+      tabIndex="-1"
+    >
       <div className="batch-summary">
         <div>
           <p className="eyebrow">Batch Result</p>
