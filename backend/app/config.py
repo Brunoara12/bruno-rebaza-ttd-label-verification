@@ -1,6 +1,10 @@
 from functools import lru_cache
 from os import getenv
 
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv(usecwd=True), override=False)
+
 DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 DEFAULT_VISION_MODEL = "gpt-5.4-mini"
 DEFAULT_VISION_PROVIDER = "mock"

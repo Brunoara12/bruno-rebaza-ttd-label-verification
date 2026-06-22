@@ -1,18 +1,21 @@
 ﻿# TTB Label Verification
 
-TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, Phase 2 added a mockable vision extraction service, and Phase 3 wires the single-label verification API.
+TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, Phase 2 added a mockable vision extraction service, Phase 3 wires the single-label verification API, and Phase 4 adds the single-label frontend flow.
 
 ## Status
 
-Phase 0, Phase 1, Phase 2, and Phase 3 are complete.
+| Phase | Status | Notes |
+| --- | --- | --- |
+| Phase 0 | Done | Repo scaffold, deploy skeleton, and health endpoint. |
+| Phase 1 | Done | Typed data models and pure comparison engine. |
+| Phase 2 | Done | Mockable vision extraction service and image preprocessing. |
+| Phase 3 | Done | `POST /verify` single-label API. |
+| Phase 4 | Done | Single-label frontend flow with verdict and per-field results. |
+| Phase 5 | Upcoming | Batch support. |
+| Phase 6 | Upcoming | Robustness and performance. |
+| Phase 7 | Upcoming | End-to-end deploy verification and README polish. |
 
-- Backend health endpoint is implemented at `GET /health`.
-- Frontend is deployed and displays backend connectivity status.
-- Backend and frontend are deployed separately to match the planned proof-of-concept architecture.
-- Pydantic models define the application data, extracted label, field result, and verification result contracts.
-- The comparison engine is pure Python: fuzzy brand/class/producer matching, country synonyms, ABV normalization, net-content unit normalization, and exact case-sensitive government-warning comparison.
-- The VisionService adds image preprocessing, strict structured extraction, defensive parsing, and a mock provider for tests and local development.
-- `POST /verify` accepts a label image plus application data as multipart form data and returns a full `VerificationResult` with per-field expected/found values, verdict, latency, and readable errors.
+Current focus: the deployed single-label experience is complete and the next planned step is batch support.
 
 ## Deployed URLs
 
@@ -39,6 +42,8 @@ uv run uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
 Open `http://localhost:8000/health`.
 
+The backend loads the repo-root `.env` file automatically for local development. To use the real vision model locally, set `VISION_PROVIDER=openai` and `OPENAI_API_KEY` there, then restart the backend.
+
 Submit one label verification request:
 
 ```bash
@@ -63,6 +68,8 @@ npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
 ```
 
 Open `http://localhost:5173`.
+
+Set `VITE_API_BASE_URL=http://localhost:8000` in `frontend/.env` to point the local frontend at your local backend. If the variable is not set, the frontend defaults to the deployed Render backend.
 
 ## Tests And Builds
 

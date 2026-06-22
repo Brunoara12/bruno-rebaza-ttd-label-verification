@@ -56,7 +56,7 @@ Comparison Engine | Field-by-field match logic (fuzzy / normalized / exact) | Pu
 Vision Service | Image â†’ structured `ExtractedLabel` via the vision model | Slow, nondeterministic; isolate so it can be mocked in tests
 API layer | HTTP, validation, orchestration, error shaping | Thin; delegates to services above
 Image Preprocess | Downscale / re-encode before model call | Directly serves the 5-second budget and cost control
-Frontend | Upload, form, results, batch summary | Built against a stable API contract
+Frontend | Accessible single-label upload, form, and results; batch summary in the batch phase | Built against a stable API contract
 Config / secrets | API keys via environment variables only | Hard requirement; no keys committed
 
 ## Data Model (Pydantic summaries)
