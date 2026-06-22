@@ -90,9 +90,18 @@ These models are the contract between frontend, API, Vision Service and Comparis
   - `overall_verdict: "APPROVED" | "NEEDS_REVIEW"`
   - `latency_ms: int`
 
+- `BatchItemResult`:
+  - `client_id: str`
+  - `index: int`
+  - `filename: Optional[str]`
+  - `status: "COMPLETED" | "ERROR"`
+  - `result: Optional[VerificationResult]`
+  - `error: Optional[{code: str, message: str, fields: list}]`
+
 - `BatchResult`:
-  - `items: list[VerificationResult]`
+  - `items: list[BatchItemResult]`
   - `summary: {passed: int, needs_review: int, total: int}`
+  - `latency_ms: int`
 
 **Verdict rule**: any field `FAIL` â‡’ `NEEDS_REVIEW`; all `PASS` â‡’ `APPROVED`.
 
@@ -114,7 +123,7 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 - **Image Preprocess**: corrupted or too-large images should be rejected or gracefully downsampled. Valid images are EXIF-oriented, converted to RGB, downscaled, and JPEG re-encoded before model submission. If preprocess fails, return `400` with guidance.
 - **Vision Service**: the OpenAI adapter requests strict structured JSON matching `ExtractedLabel`, then validates it with Pydantic. Blurry/angled/glare images and valid non-label images should return partial or null extracted fields rather than throw. Model timeout must still keep the single-label request under the 5-second SLA. Return `200` with a normal `VerificationResult`: affected fields `FAIL`, `overall_verdict: NEEDS_REVIEW`, `reason_code: MODEL_TIMEOUT`, nullable extracted fields, and `extraction_confidence: 0.0`. Do not use `504` for expected model timeouts in the verification flow.
 - **Comparison Engine**: missing `ExtractedLabel` fields are treated per-strategy: numeric/unit fields try to parse; fuzzy fields with null produce `FAIL` (and thus `NEEDS_REVIEW`). Record reason codes for each `FAIL`.
-- **Batch processing**: per-item failures must not abort whole batch; return item-level `VerificationResult` with `overall_verdict` and include batch-level summary counts.
+- **Batch processing**: per-item failures must not abort whole batch; return one `BatchItemResult` per submitted item. Completed items include item-level `VerificationResult`; invalid/corrupt/provider-failed items include a readable item-level error. Summary counts use `passed = APPROVED items`, `needs_review = total - passed`, so item-level errors count as needs review.
 - **Timeout & SLA**: measure end-to-end latency (`latency_ms`) from endpoint entry through validation, preprocessing, extraction, comparison, and response shaping. Return it in the body and `X-Verification-Latency-ms`; if latency reaches the 5-second SLA, return the response and log a warning with `sla_exceeded`.
 
 | Component | Failure Mode | API Response | Recoverable? |

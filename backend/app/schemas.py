@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 FieldStatus = Literal["PASS", "FAIL"]
 OverallVerdict = Literal["APPROVED", "NEEDS_REVIEW"]
+BatchItemStatus = Literal["COMPLETED", "ERROR"]
 
 
 class StrictModel(BaseModel):
@@ -45,4 +46,37 @@ class FieldResult(StrictModel):
 class VerificationResult(StrictModel):
     results: list[FieldResult]
     overall_verdict: OverallVerdict
+    latency_ms: int = Field(default=0, ge=0)
+
+
+class ErrorField(StrictModel):
+    field: str
+    code: str
+    message: str
+
+
+class ItemError(StrictModel):
+    code: str
+    message: str
+    fields: list[ErrorField] = Field(default_factory=list)
+
+
+class BatchItemResult(StrictModel):
+    client_id: str
+    index: int = Field(ge=0)
+    filename: str | None = None
+    status: BatchItemStatus
+    result: VerificationResult | None = None
+    error: ItemError | None = None
+
+
+class BatchSummary(StrictModel):
+    passed: int = Field(ge=0)
+    needs_review: int = Field(ge=0)
+    total: int = Field(ge=0)
+
+
+class BatchVerificationResult(StrictModel):
+    items: list[BatchItemResult]
+    summary: BatchSummary
     latency_ms: int = Field(default=0, ge=0)

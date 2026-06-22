@@ -1,6 +1,6 @@
 ﻿# TTB Label Verification
 
-TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, Phase 2 added a mockable vision extraction service, Phase 3 wires the single-label verification API, and Phase 4 adds the single-label frontend flow.
+TTB Label Verification is a proof-of-concept application for checking beverage alcohol labels against structured compliance requirements. Phase 0 established the deployable foundation, Phase 1 added the typed data models plus a pure comparison engine, Phase 2 added a mockable vision extraction service, Phase 3 wires the single-label verification API, Phase 4 adds the single-label frontend flow, and Phase 5 adds batch verification.
 
 ## Status
 
@@ -11,11 +11,11 @@ TTB Label Verification is a proof-of-concept application for checking beverage a
 | Phase 2 | Done | Mockable vision extraction service and image preprocessing. |
 | Phase 3 | Done | `POST /verify` single-label API. |
 | Phase 4 | Done | Single-label frontend flow with verdict and per-field results. |
-| Phase 5 | Upcoming | Batch support. |
+| Phase 5 | Done | Batch endpoint and frontend batch view. |
 | Phase 6 | Upcoming | Robustness and performance. |
 | Phase 7 | Upcoming | End-to-end deploy verification and README polish. |
 
-Current focus: the deployed single-label experience is complete and the next planned step is batch support.
+Current focus: batch support is implemented locally; the next planned step is robustness, performance, and deployed end-to-end verification.
 
 ## Deployed URLs
 
@@ -48,7 +48,7 @@ Submit one label verification request:
 
 ```bash
 curl -X POST http://localhost:8000/verify \
-  -F "image=@labels/sample-label.png;type=image/png" \
+  -F "image=@labels/Clover-Hill-wine-back-label.png;type=image/png" \
   -F "brand_name=Acme Reserve" \
   -F "class_type=Straight Bourbon Whiskey" \
   -F "abv=45%" \
@@ -59,6 +59,16 @@ curl -X POST http://localhost:8000/verify \
 ```
 
 The response is a `VerificationResult` with `results`, `overall_verdict`, and `latency_ms`. The same latency is also returned in `X-Verification-Latency-ms`.
+
+Submit a batch verification request with one `items_json` array and repeated `images` file fields:
+
+```bash
+curl -X POST http://localhost:8000/verify/batch \
+  -F 'items_json=[{"client_id":"label-1","brand_name":"Acme Reserve","class_type":"Straight Bourbon Whiskey","abv":"45%","net_contents":"750 mL","producer":"Acme Distilling Co.","country_of_origin":"United States","government_warning":"GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."}]' \
+  -F "images=@labels/Clover-Hill-wine-back-label.png;type=image/png"
+```
+
+The response includes `items`, `summary`, and `latency_ms`. One bad item returns an item-level error or needs-review result without failing the whole batch.
 
 Run the frontend from `frontend`:
 
@@ -106,6 +116,8 @@ VISION_TIMEOUT_SECONDS=4
 VISION_MAX_IMAGE_EDGE_PX=1600
 VISION_JPEG_QUALITY=82
 MAX_UPLOAD_BYTES=10485760
+BATCH_MAX_ITEMS=10
+BATCH_WORKER_CONCURRENCY=3
 OPENAI_API_KEY=<set in host environment only>
 ```
 

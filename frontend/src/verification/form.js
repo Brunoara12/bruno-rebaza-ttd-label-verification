@@ -9,6 +9,23 @@ export function buildVerificationFormData(imageFile, formValues) {
   return formData;
 }
 
+export function buildBatchVerificationFormData(batchItems) {
+  const formData = new FormData();
+  const items = batchItems.map((item) => {
+    const payloadItem = { client_id: item.clientId };
+    FIELD_DEFINITIONS.forEach((field) => {
+      payloadItem[field.name] = item.formValues[field.name].trim();
+    });
+    return payloadItem;
+  });
+
+  formData.append("items_json", JSON.stringify(items));
+  batchItems.forEach((item) => {
+    formData.append("images", item.imageFile, item.imageFile.name);
+  });
+  return formData;
+}
+
 export function validateForm(imageFile, formValues) {
   const errors = {};
 
@@ -27,6 +44,16 @@ export function validateForm(imageFile, formValues) {
   return errors;
 }
 
+export function validateBatchItems(batchItems) {
+  return batchItems.reduce((errorsByItem, item) => {
+    const itemErrors = validateForm(item.imageFile, item.formValues);
+    if (Object.keys(itemErrors).length > 0) {
+      errorsByItem[item.clientId] = itemErrors;
+    }
+    return errorsByItem;
+  }, {});
+}
+
 export function focusFirstError(errors) {
   const firstFieldName = Object.keys(errors)[0];
   if (!firstFieldName) {
@@ -35,6 +62,26 @@ export function focusFirstError(errors) {
 
   window.requestAnimationFrame(() => {
     const elementId = firstFieldName === "image" ? "image" : `field-${firstFieldName}`;
+    document.getElementById(elementId)?.focus();
+  });
+}
+
+export function focusFirstBatchError(errorsByItem) {
+  const firstItemId = Object.keys(errorsByItem)[0];
+  if (!firstItemId) {
+    return;
+  }
+
+  const firstFieldName = Object.keys(errorsByItem[firstItemId])[0];
+  if (!firstFieldName) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    const elementId =
+      firstFieldName === "image"
+        ? `batch-${firstItemId}-image`
+        : `batch-${firstItemId}-${firstFieldName}`;
     document.getElementById(elementId)?.focus();
   });
 }
