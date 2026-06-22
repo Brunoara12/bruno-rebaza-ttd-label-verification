@@ -110,12 +110,12 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 
 ## Error Handling & Edge Cases
 
-- **Validation (API layer)**: file MIME/type and size checks; required fields â†’ return `422 Unprocessable Entity` with structured errors.
+- **Validation (API layer)**: `POST /verify` accepts multipart field `image` plus the seven `ApplicationData` text fields. Missing image/fields, blank text fields, and unsupported file types return readable `422` errors; oversized uploads return `413`; empty/corrupt/unreadable images return `400`. Error responses never include stack traces.
 - **Image Preprocess**: corrupted or too-large images should be rejected or gracefully downsampled. Valid images are EXIF-oriented, converted to RGB, downscaled, and JPEG re-encoded before model submission. If preprocess fails, return `400` with guidance.
 - **Vision Service**: the OpenAI adapter requests strict structured JSON matching `ExtractedLabel`, then validates it with Pydantic. Blurry/angled/glare images and valid non-label images should return partial or null extracted fields rather than throw. Model timeout must still keep the single-label request under the 5-second SLA. Return `200` with a normal `VerificationResult`: affected fields `FAIL`, `overall_verdict: NEEDS_REVIEW`, `reason_code: MODEL_TIMEOUT`, nullable extracted fields, and `extraction_confidence: 0.0`. Do not use `504` for expected model timeouts in the verification flow.
 - **Comparison Engine**: missing `ExtractedLabel` fields are treated per-strategy: numeric/unit fields try to parse; fuzzy fields with null produce `FAIL` (and thus `NEEDS_REVIEW`). Record reason codes for each `FAIL`.
 - **Batch processing**: per-item failures must not abort whole batch; return item-level `VerificationResult` with `overall_verdict` and include batch-level summary counts.
-- **Timeout & SLA**: measure end-to-end latency (`latency_ms`). If latency exceeds SLA, return response but set header `X-Verification-Latency-ms` and log a metric.
+- **Timeout & SLA**: measure end-to-end latency (`latency_ms`) from endpoint entry through validation, preprocessing, extraction, comparison, and response shaping. Return it in the body and `X-Verification-Latency-ms`; if latency reaches the 5-second SLA, return the response and log a warning with `sla_exceeded`.
 
 | Component | Failure Mode | API Response | Recoverable? |
 |---|---|---|---|

@@ -7,6 +7,7 @@ DEFAULT_VISION_PROVIDER = "mock"
 DEFAULT_VISION_TIMEOUT_SECONDS = 4.0
 DEFAULT_VISION_MAX_IMAGE_EDGE_PX = 1600
 DEFAULT_VISION_JPEG_QUALITY = 82
+DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
 class Settings:
@@ -29,6 +30,10 @@ class Settings:
         self.vision_jpeg_quality = self._parse_int(
             getenv("VISION_JPEG_QUALITY"),
             DEFAULT_VISION_JPEG_QUALITY,
+        )
+        self.max_upload_bytes = self._parse_int(
+            getenv("MAX_UPLOAD_BYTES"),
+            DEFAULT_MAX_UPLOAD_BYTES,
         )
 
     @staticmethod

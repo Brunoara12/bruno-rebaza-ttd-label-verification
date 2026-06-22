@@ -19,7 +19,7 @@ This file captures the phased execution plan that implements the architecture. F
 
 3. `POST /verify` endpoint
 - Wire validation, preprocess, call to vision adapter, and comparison engine. Return `VerificationResult`, including the agreed timeout behavior: model timeouts return `NEEDS_REVIEW` with field-level `MODEL_TIMEOUT` reason codes, not `504`.
-- Add request-level latency instrumentation and structured logging.
+- Add request-level latency instrumentation and structured logging. Return `latency_ms` in the body and `X-Verification-Latency-ms` in the response header. Shape validation and server errors with readable messages and no stack traces.
 
 4. Frontend single-label flow
 - Build minimal form (React or plain HTML/JS) that posts `multipart/form-data` to `/verify` and shows per-field PASS/FAIL.
