@@ -10,6 +10,7 @@ from backend.app.vision_service import (
     MockVisionService,
     OpenAIVisionService,
     VisionParseError,
+    VisionProviderError,
     VisionTimeoutError,
     DEFAULT_MAX_OUTPUT_TOKENS,
     _payload_from_response,
@@ -69,6 +70,19 @@ class FakeResponses:
 class FakeClient:
     def __init__(self, response: object | None = None, exc: Exception | None = None) -> None:
         self.responses = FakeResponses(response=response, exc=exc)
+        self.models = FakeModels()
+
+
+class FakeModels:
+    def __init__(self, exc: Exception | None = None) -> None:
+        self.exc = exc
+        self.calls: list[tuple[str, float]] = []
+
+    def retrieve(self, model: str, *, timeout: float) -> object:
+        self.calls.append((model, timeout))
+        if self.exc is not None:
+            raise self.exc
+        return {"id": model}
 
 
 def test_mock_vision_service_returns_deterministic_label_without_api() -> None:
@@ -123,6 +137,29 @@ def test_openai_service_maps_timeout_to_typed_error() -> None:
         service.extract_label(preprocessed_image())
 
 
+def test_openai_service_retrieves_configured_model_for_startup_validation() -> None:
+    client = FakeClient()
+    service = OpenAIVisionService(
+        api_key="test-key",
+        model="test-model",
+        timeout_seconds=2.5,
+        client=client,
+    )
+
+    service.validate_model()
+
+    assert client.models.calls == [("test-model", 2.5)]
+
+
+def test_openai_model_validation_maps_provider_errors() -> None:
+    client = FakeClient()
+    client.models.exc = RuntimeError("not found")
+    service = OpenAIVisionService(api_key="test-key", client=client)
+
+    with pytest.raises(VisionProviderError):
+        service.validate_model()
+
+
 def test_malformed_json_maps_to_parse_error() -> None:
     client = FakeClient(response=FakeResponse(output_text="{not-json"))
     service = OpenAIVisionService(api_key="test-key", client=client)
@@ -138,6 +175,15 @@ def test_schema_invalid_output_maps_to_parse_error() -> None:
 
     with pytest.raises(VisionParseError):
         service.extract_label(preprocessed_image())
+
+
+def test_missing_extraction_confidence_defaults_to_none() -> None:
+    payload = label_payload()
+    del payload["extraction_confidence"]
+
+    result = _payload_from_response(FakeResponse(payload))
+
+    assert result.extraction_confidence is None
 
 
 def test_incomplete_or_refused_response_maps_to_parse_error() -> None:
@@ -204,3 +250,12 @@ def test_partial_poor_image_response_returns_partial_data() -> None:
 def test_prompt_contains_non_label_and_unknown_null_rules() -> None:
     assert "Use null for any field" in EXTRACTION_PROMPT
     assert "If the image is not a beverage alcohol label" in EXTRACTION_PROMPT
+
+
+def test_strict_schema_is_derived_from_extracted_label_and_allows_null_confidence() -> None:
+    from backend.app.vision_service import VISION_EXTRACTION_SCHEMA
+
+    assert VISION_EXTRACTION_SCHEMA["additionalProperties"] is False
+    assert set(VISION_EXTRACTION_SCHEMA["required"]) == set(VISION_EXTRACTION_SCHEMA["properties"])
+    confidence_schema = VISION_EXTRACTION_SCHEMA["properties"]["extraction_confidence"]
+    assert {entry["type"] for entry in confidence_schema["anyOf"]} == {"number", "null"}

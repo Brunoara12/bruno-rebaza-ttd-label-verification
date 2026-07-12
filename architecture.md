@@ -75,7 +75,7 @@ These models are the contract between frontend, API, Vision Service and Comparis
 - `ExtractedLabel` (vision model output):
   - Same seven fields as above (nullable)
   - `raw_text: str` (full OCRed text)
-  - `extraction_confidence: float` (0.0-1.0)
+  - `extraction_confidence: Optional[float]` (0.0-1.0 when supplied; defaults to `null`)
 
 - `FieldResult`:
   - `field: str`
@@ -136,7 +136,8 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 ## Deployment & Configuration
 
 - **Secrets**: All API keys, model endpoints, and credentials MUST be environment variables. Never commit keys.
-- **Config vars**: fuzzy thresholds, model timeout, max image size, worker concurrency. Current tuned defaults are `VISION_TIMEOUT_SECONDS=4`, `VISION_MAX_IMAGE_EDGE_PX=1280`, and `VISION_JPEG_QUALITY=76`. Prefer a small env-based `CONFIG` or 12-factor env vars.
+- **Config vars**: validated with `pydantic-settings` at process startup. Timeouts, image edge, upload, and batch limits must be positive; JPEG quality must be 1-100. Current tuned defaults are `VISION_TIMEOUT_SECONDS=4`, `VISION_MAX_IMAGE_EDGE_PX=1280`, and `VISION_JPEG_QUALITY=76`.
+- **Provider startup validation**: with `VISION_PROVIDER=openai`, the configured `VISION_MODEL` is retrieved once during worker startup. Invalid, inaccessible, or unavailable models prevent that worker from accepting traffic. Mock mode remains offline.
 - **Hosting**: backend: FastAPI (Python 3.12) deployed to Render. Frontend: static hosting on Vercel with CDN delivery.
 - **Scaling**: stateless design supports horizontal scaling; Render and Vercel both support fast deploys and environment-only secrets for their respective layers.
 - **Monitoring**: metrics for latency, extraction_confidence distributions, error rates. Log requests minimally (no PII) and capture `raw_text` only when needed for debugging with retention policy.

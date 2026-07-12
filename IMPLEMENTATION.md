@@ -43,6 +43,12 @@ This file captures the phased execution plan that implements the architecture. F
 - Run the final submission audit: no tracked `.env` files, no obvious hardcoded secrets in current tracked files or git history, backend health passes, live single-label and batch flows work, warning exact-match behavior is verified, imperfect-image behavior returns a normal reviewable result, and the deployed benchmark stays under the 5-second single-label SLA.
 - Acceptance note: Phase 7 is not complete until `docs/plan/phase-7.md` records the audit results and live end-to-end evidence.
 
+8. Backend configuration and API refactor
+- Replace manual environment parsing with `pydantic-settings` validation, including configuration ranges and conditional OpenAI credentials.
+- Validate the configured OpenAI vision model at worker startup, keeping mock mode fully offline.
+- Split API composition, routes, errors, validation, single-label verification, and batch orchestration into focused modules while preserving the HTTP contract.
+- Remove duplicate extraction payload definitions and document public backend modules and functions.
+
 ---
 
 Each phase should include unit tests for the comparison logic and a small integration test for the endpoint once wired. Keep vision calls mockable to avoid incurring provider costs during CI.

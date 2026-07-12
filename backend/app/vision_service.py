@@ -1,14 +1,23 @@
+"""Vision-provider adapters and structured label extraction helpers."""
+
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
 import json
 from typing import Any, Protocol
 
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
 from backend.app.config import Settings, get_settings
+from backend.app.exceptions import (
+    VisionParseError,
+    VisionProviderError,
+    VisionServiceError,
+    VisionTimeoutError,
+)
 from backend.app.image_preprocess import PreprocessedImage
-from backend.app.schemas import ExtractedLabel, StrictModel
+from backend.app.schemas import ExtractedLabel
 
 
 DEFAULT_VISION_MODEL = "gpt-5.4-mini"
@@ -33,72 +42,31 @@ raw_text as any visible text if present, and extraction_confidence as 0.0.
 """.strip()
 
 
-class VisionServiceError(RuntimeError):
-    """Base class for expected vision-service failures."""
-
-
-class VisionTimeoutError(VisionServiceError):
-    """Raised when the model call exceeds the configured timeout budget."""
-
-
-class VisionParseError(VisionServiceError):
-    """Raised when the model response cannot be validated as ExtractedLabel data."""
-
-
-class VisionProviderError(VisionServiceError):
-    """Raised for provider setup or non-timeout provider failures."""
-
-
 class VisionService(Protocol):
+    """Protocol implemented by label extraction providers."""
+
     def extract_label(self, image: PreprocessedImage) -> ExtractedLabel:
         """Extract structured label data from a preprocessed image."""
         ...
 
 
-class VisionExtractionPayload(StrictModel):
-    brand_name: str | None
-    class_type: str | None
-    abv: str | None
-    net_contents: str | None
-    producer: str | None
-    country_of_origin: str | None
-    government_warning: str | None
-    raw_text: str | None
-    extraction_confidence: float = Field(ge=0.0, le=1.0)
-
-    def to_extracted_label(self) -> ExtractedLabel:
-        return ExtractedLabel(**self.model_dump())
+def _strict_extraction_schema() -> dict[str, Any]:
+    """Build the provider schema from the canonical ExtractedLabel model."""
+    schema = deepcopy(ExtractedLabel.model_json_schema())
+    properties = schema.get("properties", {})
+    schema["required"] = list(properties)
+    for property_schema in properties.values():
+        if isinstance(property_schema, dict):
+            property_schema.pop("default", None)
+    return schema
 
 
-VISION_EXTRACTION_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "brand_name": {"type": ["string", "null"]},
-        "class_type": {"type": ["string", "null"]},
-        "abv": {"type": ["string", "null"]},
-        "net_contents": {"type": ["string", "null"]},
-        "producer": {"type": ["string", "null"]},
-        "country_of_origin": {"type": ["string", "null"]},
-        "government_warning": {"type": ["string", "null"]},
-        "raw_text": {"type": ["string", "null"]},
-        "extraction_confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-    },
-    "required": [
-        "brand_name",
-        "class_type",
-        "abv",
-        "net_contents",
-        "producer",
-        "country_of_origin",
-        "government_warning",
-        "raw_text",
-        "extraction_confidence",
-    ],
-    "additionalProperties": False,
-}
+VISION_EXTRACTION_SCHEMA = _strict_extraction_schema()
 
 
 class OpenAIVisionService:
+    """Extract labels with the OpenAI Responses API."""
+
     def __init__(
         self,
         *,
@@ -125,6 +93,7 @@ class OpenAIVisionService:
         self._client = OpenAI(api_key=api_key, timeout=timeout_seconds)
 
     def extract_label(self, image: PreprocessedImage) -> ExtractedLabel:
+        """Extract structured label data from one preprocessed image."""
         try:
             response = self._client.responses.create(
                 model=self.model,
@@ -161,10 +130,19 @@ class OpenAIVisionService:
                 raise VisionTimeoutError("Vision model timed out.") from exc
             raise VisionProviderError("Vision provider request failed.") from exc
 
-        return _payload_from_response(response).to_extracted_label()
+        return _payload_from_response(response)
+
+    def validate_model(self) -> None:
+        """Verify that the configured model is available to this provider account."""
+        try:
+            self._client.models.retrieve(self.model, timeout=self.timeout_seconds)
+        except Exception as exc:
+            raise VisionProviderError("Configured vision model could not be verified.") from exc
 
 
 class MockVisionService:
+    """Deterministic local vision provider for development and tests."""
+
     def __init__(self, label: ExtractedLabel | None = None) -> None:
         self._label = label or ExtractedLabel(
             brand_name="Acme Reserve",
@@ -185,10 +163,12 @@ class MockVisionService:
         )
 
     def extract_label(self, image: PreprocessedImage) -> ExtractedLabel:
+        """Return an isolated copy of the deterministic extraction result."""
         return self._label.model_copy(deep=True)
 
 
 def get_vision_service(settings: Settings | None = None) -> VisionService:
+    """Create the extraction service selected by validated settings."""
     settings = settings or get_settings()
 
     if settings.vision_provider == "mock":
@@ -203,7 +183,20 @@ def get_vision_service(settings: Settings | None = None) -> VisionService:
     raise VisionProviderError(f"Unsupported VISION_PROVIDER: {settings.vision_provider}")
 
 
-def _payload_from_response(response: Any) -> VisionExtractionPayload:
+def validate_vision_model(settings: Settings) -> None:
+    """Fail startup when an OpenAI-configured model cannot be retrieved."""
+    if settings.vision_provider == "mock":
+        return
+
+    service = OpenAIVisionService(
+        api_key=settings.openai_api_key,
+        model=settings.vision_model,
+        timeout_seconds=settings.vision_timeout_seconds,
+    )
+    service.validate_model()
+
+
+def _payload_from_response(response: Any) -> ExtractedLabel:
     _raise_for_bad_response_status(response)
 
     parsed = _find_parsed_payload(response)
@@ -217,7 +210,7 @@ def _payload_from_response(response: Any) -> VisionExtractionPayload:
             raise VisionParseError("Vision response was not valid JSON.") from exc
 
     try:
-        return VisionExtractionPayload.model_validate(parsed)
+        return ExtractedLabel.model_validate(parsed)
     except ValidationError as exc:
         raise VisionParseError("Vision response did not match the ExtractedLabel schema.") from exc
 
