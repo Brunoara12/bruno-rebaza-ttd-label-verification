@@ -361,9 +361,11 @@ def test_latency_over_sla_is_returned_and_logged(
     service = RecordingVisionService()
     override_vision_service(service)
     readings = iter([0.0, 0.001, 5.001])
-    monkeypatch.setattr("backend.app.main.perf_counter", lambda: next(readings))
+    clock = lambda: next(readings)
+    monkeypatch.setattr("backend.app.routes.perf_counter", clock)
+    monkeypatch.setattr("backend.app.verification.perf_counter", clock)
 
-    with caplog.at_level("WARNING", logger="backend.app.main"):
+    with caplog.at_level("WARNING", logger="backend.app.verification"):
         response = client.post("/verify", data=application_form(), files=verify_files())
 
     assert response.status_code == 200

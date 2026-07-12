@@ -1,3 +1,5 @@
+"""Pure comparison rules for expected application data and extracted label text."""
+
 from difflib import SequenceMatcher
 import re
 import string
@@ -133,14 +135,17 @@ US_STATE_NAMES = {
 
 
 def compare_brand_name(expected: str, found: str | None) -> FieldResult:
+    """Compare brand names with conservative fuzzy matching."""
     return _compare_fuzzy("brand_name", "fuzzy", expected, found, FUZZY_THRESHOLD)
 
 
 def compare_class_type(expected: str, found: str | None) -> FieldResult:
+    """Compare class or type values with conservative fuzzy matching."""
     return _compare_fuzzy("class_type", "fuzzy", expected, found, FUZZY_THRESHOLD)
 
 
 def compare_producer(expected: str, found: str | None) -> FieldResult:
+    """Compare producer text after normalizing common role prefixes."""
     return _compare_fuzzy(
         "producer",
         "fuzzy",
@@ -152,6 +157,7 @@ def compare_producer(expected: str, found: str | None) -> FieldResult:
 
 
 def compare_country_of_origin(expected: str, found: str | None) -> FieldResult:
+    """Compare country values using aliases and US location cues."""
     if _is_missing(found):
         return _fail("country_of_origin", "country-synonym", expected, found, "MISSING_FIELD")
 
@@ -166,6 +172,7 @@ def compare_country_of_origin(expected: str, found: str | None) -> FieldResult:
 
 
 def compare_abv(expected: str, found: str | None) -> FieldResult:
+    """Compare alcohol-by-volume values after numeric normalization."""
     if _is_missing(found):
         return _fail("abv", "numeric-normalized", expected, found, "MISSING_FIELD")
 
@@ -182,6 +189,7 @@ def compare_abv(expected: str, found: str | None) -> FieldResult:
 
 
 def compare_net_contents(expected: str, found: str | None) -> FieldResult:
+    """Compare net contents after converting supported units to milliliters."""
     if _is_missing(found):
         return _fail("net_contents", "unit-normalized", expected, found, "MISSING_FIELD")
 
@@ -198,6 +206,7 @@ def compare_net_contents(expected: str, found: str | None) -> FieldResult:
 
 
 def compare_government_warning(expected: str, found: str | None) -> FieldResult:
+    """Compare the government warning exactly after whitespace collapse."""
     if _is_missing(found):
         return _fail("government_warning", "exact", expected, found, "MISSING_FIELD")
 
@@ -213,6 +222,7 @@ def compare_label(
     extracted: ExtractedLabel,
     latency_ms: int = 0,
 ) -> VerificationResult:
+    """Compare every extracted field and return the aggregate verification result."""
     results = [
         compare_brand_name(application.brand_name, extracted.brand_name),
         compare_class_type(application.class_type, extracted.class_type),

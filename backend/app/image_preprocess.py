@@ -1,3 +1,5 @@
+"""Image normalization utilities for vision-model input."""
+
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -15,6 +17,8 @@ class ImagePreprocessError(ValueError):
 
 @dataclass(frozen=True)
 class PreprocessedImage:
+    """A normalized JPEG image ready for provider submission."""
+
     data: bytes
     mime_type: str
     width: int
@@ -27,12 +31,13 @@ def preprocess_image(
     max_edge_px: int = DEFAULT_MAX_IMAGE_EDGE_PX,
     jpeg_quality: int = DEFAULT_JPEG_QUALITY,
 ) -> PreprocessedImage:
+    """Decode, orient, resize, and JPEG-encode an uploaded image."""
     if not image_bytes:
         raise ImagePreprocessError("Image file is empty.")
     if max_edge_px < 1:
         raise ImagePreprocessError("Maximum image edge must be at least 1 pixel.")
-    if not 1 <= jpeg_quality <= 95:
-        raise ImagePreprocessError("JPEG quality must be between 1 and 95.")
+    if not 1 <= jpeg_quality <= 100:
+        raise ImagePreprocessError("JPEG quality must be between 1 and 100.")
 
     try:
         with Image.open(BytesIO(image_bytes)) as source_image:

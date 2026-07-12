@@ -42,5 +42,8 @@ def test_preprocess_rejects_invalid_options() -> None:
     with pytest.raises(ImagePreprocessError):
         preprocess_image(make_image_bytes(10, 10), max_edge_px=0)
 
+    result = preprocess_image(make_image_bytes(10, 10), jpeg_quality=100)
+    assert result.mime_type == "image/jpeg"
+
     with pytest.raises(ImagePreprocessError):
-        preprocess_image(make_image_bytes(10, 10), jpeg_quality=100)
+        preprocess_image(make_image_bytes(10, 10), jpeg_quality=101)
