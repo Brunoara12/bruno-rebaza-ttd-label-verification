@@ -26,7 +26,7 @@ Build the image-extraction layer as an isolated, mockable backend service. Phase
 - A readable real sample can be checked manually with:
 
 ```bash
-uv run python scripts/extract_label_sample.py labels/Clover-Hill-wine-back-label.png
+uv run python scripts/extract_label_sample.py samples/acme-reserve-bourbon-label.jpg
 ```
 
 Set `OPENAI_API_KEY` and optionally `VISION_PROVIDER=openai` before running the script.

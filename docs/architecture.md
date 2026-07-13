@@ -161,6 +161,6 @@ Design note: thresholds are intentionally conservative; keep them configurable v
 
 ---
 
-See `IMPLEMENTATION.md` for the Build Order and phase-by-phase execution plan.
+See `docs/plan/` for the phase-by-phase execution plans.
 
 

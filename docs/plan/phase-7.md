@@ -4,6 +4,7 @@
 
 Phase 7 closes the proof-of-concept for submission by checking secret hygiene, README completeness, deployed backend behavior, deployed frontend availability, and live end-to-end verification scenarios.
 
+
 ## Submission Gates
 
 | Gate | Status | Evidence |
@@ -12,14 +13,14 @@ Phase 7 closes the proof-of-concept for submission by checking secret hygiene, R
 | README complete | PASS | README now includes setup/run, deployed URLs, public repo URL, approach, tools, assumptions, limitations, deployment, tests, and audit notes. |
 | Backend tests | PASS | `uv run pytest`: 71 passed, 1 warning. |
 | Frontend production build | PASS | `npm.cmd run build`: Vite build completed. |
-| Deployed backend health | PASS | `https://bruno-rebaza-ttd-label-verification.onrender.com/health` returned HTTP 200 with `{"status":"ok","service":"ttb-label-verification-api"}`. |
-| Deployed frontend loads | PASS | `https://ttd-label-verification.vercel.app/` returned HTTP 200. |
-| Live single-label verification | PASS | Deployed benchmark valid-label scenario returned `APPROVED` with all fields passing. |
-| Live batch verification | PASS | Deployed benchmark batch scenario returned summary `{passed: 1, needs_review: 2, total: 3}` with item-level results. |
-| Government warning exact match | PASS | Correct warning passed; wrong-caps warning returned `NEEDS_REVIEW` with `government_warning` failing. |
-| Imperfect image | PASS | Imperfect image returned a normal `200` verification result with `NEEDS_REVIEW`, not an unhandled error. |
-| Single-label under 5 seconds | PASS | Deployed benchmark single-label samples: p50 2991 ms, p95 4801 ms, max 4801 ms. |
-| Public repo unauthenticated access | NEEDS ACTION | `git ls-remote` against the HTTPS GitHub URL returned `Repository not found`; the repo may still be private or inaccessible anonymously. |
+| Deployed backend health | PASS | Current backend health returned HTTP 200. |
+| Deployed frontend loads | PASS | Current Vercel frontend returned HTTP 200. |
+| Live single-label verification | PASS | Valid-label scenario returned `APPROVED` with all fields passing. |
+| Live batch verification | PASS | Batch scenario returned `{passed: 1, needs_review: 2, total: 3}` with item-level results. |
+| Government warning exact match | PASS | Correct warning passed; wrong-case warning returned `NEEDS_REVIEW` with `government_warning` failing. |
+| Imperfect image | PASS | Imperfect image returned a normal `200 NEEDS_REVIEW` result. |
+| Single-label under 5 seconds | PASS | Nine samples measured p50 3313 ms, p95 4800 ms, and max 4800 ms. |
+| Public repo unauthenticated access | PASS | `git ls-remote` returned `9fbd1780488e8d0531c0711eebca3a9a3d3137a3` for `HEAD`. |
 
 ## Secret Audit Results
 
@@ -31,51 +32,39 @@ Phase 7 closes the proof-of-concept for submission by checking secret hygiene, R
 - Current tracked-file key-pattern scan: no matches.
 - Git-history key-pattern scan: no matching patch content.
 
-## Live Verification Results
+## Live Verification Procedure
 
 Command:
 
 ```bash
-uv run python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification.onrender.com --repeats 3
+uv run python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification-ej1c.onrender.com --repeats 3
 ```
 
-Result:
+Result on 2026-07-12:
 
-- `All passed: True`
-- `health`: PASS
-- `empty_submit`: PASS
-- `wrong_file_type`: PASS
-- `valid_label`: PASS
-- `correct_warning`: PASS
-- `mismatches`: PASS
-- `case_only`: PASS
-- `abv_units_normalization`: PASS
-- `missing_warning`: PASS
-- `wrong_caps_warning`: PASS
-- `imperfect_image`: PASS
-- `batch_summary`: PASS
-- `single_label_speed`: PASS
-- Single-label latency samples: `[4801, 4801, 2942, 2991, 2977, 3649, 2335, 3264, 1882]`
+- `all_passed`: `true`
+- All checklist scenarios passed.
+- Single-label samples: `[4800, 4394, 4278, 3313, 3307, 3560, 3071, 3176, 1993]`
+- Single-label latency: p50 3313 ms, p95 4800 ms, max 4800 ms.
 
-## Public Repo Follow-Up
+## Public Repository Verification
 
 The README includes the intended public repo URL:
 
 ```text
-https://github.com/AI-Native-2026-06-22-FedStack/bruno-rebaza-ttd-label-verification
+https://github.com/Brunoara12/bruno-rebaza-ttd-label-verification
 ```
 
-The unauthenticated check failed:
+Before submission, confirm the public repository is reachable:
 
 ```text
-remote: Repository not found.
-fatal: repository 'https://github.com/AI-Native-2026-06-22-FedStack/bruno-rebaza-ttd-label-verification.git/' not found
+git ls-remote https://github.com/Brunoara12/bruno-rebaza-ttd-label-verification.git HEAD
 ```
 
-Before final submission, make the GitHub repo public or provide the correct public URL, then rerun:
+Before final submission, confirm the GitHub repo is public, then rerun:
 
 ```bash
-git ls-remote https://github.com/AI-Native-2026-06-22-FedStack/bruno-rebaza-ttd-label-verification.git HEAD
+git ls-remote https://github.com/Brunoara12/bruno-rebaza-ttd-label-verification.git HEAD
 ```
 
 Expected result: one commit SHA and `HEAD`.

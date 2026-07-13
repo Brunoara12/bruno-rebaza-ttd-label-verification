@@ -102,8 +102,8 @@ Add end-to-end batch verification for multiple label image plus application-data
   - `frontend/src/styles.css`: batch layout, progress, and drill-down styles.
 
 - Documentation check during Execute:
-  - `architecture.md`: update `BatchResult` shape if the item wrapper is accepted.
-  - `IMPLEMENTATION.md`: expand Phase 5 details after implementation.
+  - `docs/architecture.md`: update `BatchResult` shape if the item wrapper is accepted.
+  - `docs/plan/phase-5.md`: record any accepted Phase 5 documentation changes.
   - `README.md`: update only if the user-facing run/verification steps change.
 
 ## Tests

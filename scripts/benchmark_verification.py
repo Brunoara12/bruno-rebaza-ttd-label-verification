@@ -10,7 +10,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
-DEFAULT_BACKEND_URL = "https://bruno-rebaza-ttd-label-verification.onrender.com"
+DEFAULT_BACKEND_URL = "https://bruno-rebaza-ttd-label-verification-ej1c.onrender.com"
 
 CANONICAL_WARNING = (
     "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC "
@@ -21,7 +21,7 @@ CANONICAL_WARNING = (
 
 LABEL_FIELDS = {
     "brand_name": "Acme Reserve",
-    "class_type": "Straight Rye Whisky",
+    "class_type": "Straight Bourbon Whiskey",
     "abv": "45%",
     "net_contents": "750 mL",
     "producer": "Acme Distilling Co.",
@@ -44,7 +44,18 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--timeout", type=float, default=45.0)
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON only.")
+    parser.add_argument(
+        "--write-sample",
+        type=Path,
+        help="Write the deterministic Acme Reserve sample image and exit without calling a backend.",
+    )
     args = parser.parse_args()
+
+    if args.write_sample:
+        args.write_sample.parent.mkdir(parents=True, exist_ok=True)
+        args.write_sample.write_bytes(generate_label_jpeg(with_warning=True))
+        print(f"Wrote sample image: {args.write_sample}")
+        return
 
     base_url = args.base_url.rstrip("/")
     image_bytes = args.image.read_bytes() if args.image else generate_label_jpeg(with_warning=True)
@@ -443,7 +454,7 @@ def generate_label_jpeg(*, with_warning: bool) -> bytes:
     y = 90
     draw.text((90, y), "ACME RESERVE", fill="black", font=title_font)
     y += 120
-    draw.text((90, y), "STRAIGHT RYE WHISKY", fill="black", font=heading_font)
+    draw.text((90, y), "STRAIGHT BOURBON WHISKEY", fill="black", font=heading_font)
     y += 95
     draw.text((90, y), "ALC 45% BY VOL", fill="black", font=body_font)
     y += 75

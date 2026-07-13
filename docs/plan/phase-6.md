@@ -36,7 +36,7 @@ Phase 6 hardens the existing proof-of-concept without adding product features. I
 
 - `uv run pytest`
 - `npm run build` from `frontend`
-- `python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification.onrender.com --repeats 3`
+- `python scripts/benchmark_verification.py --base-url https://bruno-rebaza-ttd-label-verification-ej1c.onrender.com --repeats 3`
 
 ## Risks
 
