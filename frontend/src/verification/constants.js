@@ -1,4 +1,4 @@
-export const DEPLOYED_API_BASE_URL = "https://bruno-rebaza-ttd-label-verification.onrender.com";
+export const DEPLOYED_API_BASE_URL = "https://bruno-rebaza-ttd-label-verification-ej1c.onrender.com";
 
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? DEPLOYED_API_BASE_URL
