@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
-import { FIELD_DEFINITIONS, MAX_BATCH_ITEMS } from "../verification/constants";
+import {
+  FIELD_DEFINITIONS,
+  IMAGE_PICKER_ACCEPT,
+  MAX_BATCH_ITEMS,
+} from "../verification/constants";
 
 export function BatchVerificationForm({
   items,
@@ -79,7 +83,7 @@ function BatchItemFields({
           <button
             className="remove-label-action"
             type="button"
-            onClick={() => onRemoveItem(item.clientId)}
+            onClick={(event) => onRemoveItem(item.clientId, index + 1, event.currentTarget)}
             disabled={isSubmitting}
           >
             Remove
@@ -91,13 +95,13 @@ function BatchItemFields({
         <label className="file-picker" htmlFor={imageInputId}>
           <span className="file-picker-title">Choose Label Photo</span>
           <span className="file-picker-detail">
-            {item.imageFile ? item.imageFile.name : "JPEG, PNG, or WEBP"}
+            {item.imageFile ? item.imageFile.name : "Choose an image file. The server will check supported types."}
           </span>
           <input
             id={imageInputId}
             name="image"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={IMAGE_PICKER_ACCEPT}
             onChange={(event) => onImageChange(item.clientId, event)}
             disabled={isSubmitting}
             aria-invalid={Boolean(errors.image)}
@@ -116,6 +120,10 @@ function BatchItemFields({
         {FIELD_DEFINITIONS.map((field) => {
           const inputId = `batch-${item.clientId}-${field.name}`;
           const errorId = `${inputId}-error`;
+          const helpId = field.helpText ? `${inputId}-help` : undefined;
+          const describedBy = [helpId, errors[field.name] ? errorId : undefined]
+            .filter(Boolean)
+            .join(" ") || undefined;
           const commonProps = {
             id: inputId,
             name: field.name,
@@ -124,16 +132,28 @@ function BatchItemFields({
             onChange: (event) => onFieldChange(item.clientId, event),
             disabled: isSubmitting,
             "aria-invalid": Boolean(errors[field.name]),
-            "aria-describedby": errors[field.name] ? errorId : undefined,
+            "aria-describedby": describedBy,
           };
 
           return (
             <div key={field.name} className={field.multiline ? "field full-width" : "field"}>
               <label htmlFor={inputId}>{field.label}</label>
+              {field.helpText && (
+                <p className="field-help" id={helpId}>
+                  {field.helpText}
+                </p>
+              )}
               {field.multiline ? (
                 <textarea {...commonProps} rows="7" />
               ) : (
-                <input {...commonProps} type="text" inputMode={field.inputMode} />
+                <input
+                  {...commonProps}
+                  type={field.inputType ?? "text"}
+                  inputMode={field.inputMode}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                />
               )}
               {errors[field.name] && (
                 <p className="field-error" id={errorId}>

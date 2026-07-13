@@ -5,6 +5,7 @@ import { BatchVerificationForm } from "./components/BatchVerificationForm";
 import { ErrorAlert } from "./components/ErrorAlert";
 import { LoadingPanel } from "./components/LoadingPanel";
 import { ProgressPanel } from "./components/ProgressPanel";
+import { RemoveBatchItemDialog } from "./components/RemoveBatchItemDialog";
 import { StickySubmitAction } from "./components/StickySubmitAction";
 import { VerificationForm } from "./components/VerificationForm";
 import { VerificationResultView } from "./components/VerificationResultView";
@@ -37,6 +38,7 @@ export default function App() {
   const [generalError, setGeneralError] = useState("");
   const [result, setResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [singleStartedAt, setSingleStartedAt] = useState(null);
   const [batchItems, setBatchItems] = useState(() => [createBatchItem()]);
   const [batchItemErrors, setBatchItemErrors] = useState({});
   const [batchRequestErrors, setBatchRequestErrors] = useState({});
@@ -45,8 +47,10 @@ export default function App() {
   const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
   const [showBatchProgress, setShowBatchProgress] = useState(false);
   const [batchStartedAt, setBatchStartedAt] = useState(null);
+  const [pendingBatchRemoval, setPendingBatchRemoval] = useState(null);
   const fileInputRef = useRef(null);
   const resultRef = useRef(null);
+  const removalTriggerRef = useRef(null);
 
   useEffect(() => {
     if (!imageFile) {
@@ -107,6 +111,7 @@ export default function App() {
       return;
     }
 
+    setSingleStartedAt(Date.now());
     setIsSubmitting(true);
     setGeneralError("");
     setFieldErrors({});
@@ -125,6 +130,7 @@ export default function App() {
       }
     } finally {
       setIsSubmitting(false);
+      setSingleStartedAt(null);
     }
   }
 
@@ -189,6 +195,35 @@ export default function App() {
     setBatchGeneralError("");
     setBatchRequestErrors({});
     setBatchResult(null);
+  }
+
+  function requestBatchItemRemoval(clientId, labelNumber, triggerElement) {
+    const item = batchItems.find((currentItem) => currentItem.clientId === clientId);
+    if (!item) {
+      return;
+    }
+
+    if (!isBatchItemPopulated(item)) {
+      removeBatchItem(clientId);
+      return;
+    }
+
+    removalTriggerRef.current = triggerElement;
+    setPendingBatchRemoval({ clientId, labelNumber });
+  }
+
+  function cancelBatchItemRemoval() {
+    setPendingBatchRemoval(null);
+    window.requestAnimationFrame(() => removalTriggerRef.current?.focus());
+  }
+
+  function confirmBatchItemRemoval() {
+    if (!pendingBatchRemoval) {
+      return;
+    }
+
+    removeBatchItem(pendingBatchRemoval.clientId);
+    setPendingBatchRemoval(null);
   }
 
   async function handleBatchSubmit(event) {
@@ -283,7 +318,7 @@ export default function App() {
               onSubmit={handleSubmit}
             />
 
-            <LoadingPanel isSubmitting={isSubmitting} />
+            <LoadingPanel isSubmitting={isSubmitting} startedAt={singleStartedAt} />
 
             {result && (
               <VerificationResultView result={result} onReset={resetForm} resultRef={resultRef} />
@@ -298,7 +333,7 @@ export default function App() {
               itemErrors={batchItemErrors}
               isSubmitting={isBatchSubmitting}
               onAddItem={addBatchItem}
-              onRemoveItem={removeBatchItem}
+              onRemoveItem={requestBatchItemRemoval}
               onFieldChange={handleBatchFieldChange}
               onImageChange={handleBatchImageChange}
               onSubmit={handleBatchSubmit}
@@ -317,6 +352,12 @@ export default function App() {
         )}
       </div>
 
+      <RemoveBatchItemDialog
+        item={pendingBatchRemoval}
+        onCancel={cancelBatchItemRemoval}
+        onConfirm={confirmBatchItemRemoval}
+      />
+
       <StickySubmitAction
         isHidden={hasCurrentResult}
         isSubmitting={currentSubmitting}
@@ -325,6 +366,12 @@ export default function App() {
         loadingLabel={isSingleView ? "Checking..." : "Checking Batch..."}
       />
     </main>
+  );
+}
+
+function isBatchItemPopulated(item) {
+  return Boolean(item.imageFile) || Object.keys(INITIAL_FORM_VALUES).some(
+    (fieldName) => item.formValues[fieldName] !== INITIAL_FORM_VALUES[fieldName],
   );
 }
 
