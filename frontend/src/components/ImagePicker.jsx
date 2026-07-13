@@ -12,14 +12,14 @@ export function ImagePicker({
       <label className="file-picker" htmlFor="image">
         <span className="file-picker-title">Choose Label Photo</span>
         <span className="file-picker-detail">
-          {imageFile ? imageFile.name : "JPEG, PNG, or WEBP"}
+          {imageFile ? imageFile.name : "Choose an image file. The server will check supported types."}
         </span>
         <input
           ref={fileInputRef}
           id="image"
           name="image"
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={IMAGE_PICKER_ACCEPT}
           onChange={onImageChange}
           disabled={isSubmitting}
           aria-invalid={Boolean(imageError)}
@@ -39,3 +39,4 @@ export function ImagePicker({
     </section>
   );
 }
+import { IMAGE_PICKER_ACCEPT } from "../verification/constants";

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { COLD_START_GUIDANCE_DELAY_MS } from "../verification/constants";
+
 export function ProgressPanel({ isVisible, labelCount, startedAt }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -28,6 +30,11 @@ export function ProgressPanel({ isVisible, labelCount, startedAt }) {
         <span />
       </div>
       <p className="progress-elapsed">{elapsedSeconds} seconds elapsed</p>
+      {elapsedSeconds * 1000 >= COLD_START_GUIDANCE_DELAY_MS && (
+        <p className="cold-start-guidance">
+          The first request may take up to a minute while the server warms up. Please keep this page open.
+        </p>
+      )}
     </div>
   );
 }

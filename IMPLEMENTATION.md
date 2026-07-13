@@ -49,6 +49,10 @@ This file captures the phased execution plan that implements the architecture. F
 - Split API composition, routes, errors, validation, single-label verification, and batch orchestration into focused modules while preserving the HTTP contract.
 - Remove duplicate extraction payload definitions and document public backend modules and functions.
 
+9. Frontend form validation and upload UX
+- Add accessible exact-warning guidance, constrained ABV input, numeric-shaped net-contents validation, and broad image-picker selection with backend MIME enforcement.
+- Add delayed cold-start guidance and confirmation before removing populated batch items, while preserving immediate removal for empty items.
+
 ---
 
 Each phase should include unit tests for the comparison logic and a small integration test for the endpoint once wired. Keep vision calls mockable to avoid incurring provider costs during CI.

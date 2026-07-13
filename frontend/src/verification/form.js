@@ -1,9 +1,11 @@
 import {
-  ACCEPTED_IMAGE_TYPES,
   FIELD_DEFINITIONS,
   MAX_UPLOAD_BYTES,
   MAX_UPLOAD_MB,
 } from "./constants";
+
+const NET_CONTENTS_PATTERN =
+  /^\s*(\d+(?:\.\d+)?)\s*(milliliters?|ml|liters?|litres?|l|centiliters?|cl|fluid\s*ounces?|fl\.?\s*oz\.?|ounces?|oz)\s*$/i;
 
 export function buildVerificationFormData(imageFile, formValues) {
   const formData = new FormData();
@@ -36,8 +38,6 @@ export function validateForm(imageFile, formValues) {
 
   if (!imageFile) {
     errors.image = "Please choose a label photo.";
-  } else if (!ACCEPTED_IMAGE_TYPES.has(imageFile.type)) {
-    errors.image = "Please choose a JPEG, PNG, or WEBP image.";
   } else if (imageFile.size > MAX_UPLOAD_BYTES) {
     errors.image = `Please choose a label photo smaller than ${MAX_UPLOAD_MB} MB.`;
   }
@@ -48,7 +48,29 @@ export function validateForm(imageFile, formValues) {
     }
   });
 
+  if (formValues.abv.trim() && !isValidAbv(formValues.abv)) {
+    errors.abv = "Please enter an alcohol percentage from 0 to 100 in 0.1 increments.";
+  }
+
+  if (formValues.net_contents.trim() && !isValidNetContents(formValues.net_contents)) {
+    errors.net_contents = "Please enter a positive size and unit, such as 750 mL or 25.4 fl oz.";
+  }
+
   return errors;
+}
+
+export function isValidAbv(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
+    return false;
+  }
+
+  return Math.abs(numericValue * 10 - Math.round(numericValue * 10)) < 1e-8;
+}
+
+export function isValidNetContents(value) {
+  const match = value.match(NET_CONTENTS_PATTERN);
+  return Boolean(match) && Number(match[1]) > 0;
 }
 
 export function validateBatchItems(batchItems) {

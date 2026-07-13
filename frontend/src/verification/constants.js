@@ -7,14 +7,9 @@ export const API_BASE_URL = (
 export const CANONICAL_GOVERNMENT_WARNING =
   "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.";
 
-export const ACCEPTED_IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-]);
-
 export const BATCH_PROGRESS_DELAY_MS = 700;
+export const COLD_START_GUIDANCE_DELAY_MS = 5000;
+export const IMAGE_PICKER_ACCEPT = "image/*";
 export const MAX_BATCH_ITEMS = 10;
 export const MAX_UPLOAD_BYTES = 10485760;
 export const MAX_UPLOAD_MB = 10;
@@ -35,8 +30,12 @@ export const FIELD_DEFINITIONS = [
   {
     name: "abv",
     label: "Alcohol %",
-    placeholder: "Example: 45%",
+    placeholder: "Example: 45",
+    inputType: "number",
     inputMode: "decimal",
+    min: 0,
+    max: 100,
+    step: 0.1,
   },
   {
     name: "net_contents",
@@ -61,6 +60,7 @@ export const FIELD_DEFINITIONS = [
     label: "Government Warning",
     placeholder: "Paste the full warning text",
     multiline: true,
+    helpText: "This field must match exactly, including punctuation and spacing.",
   },
 ];
 
